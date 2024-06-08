@@ -89,6 +89,7 @@ public class ParseTypeDeclaration extends CommonParse {
                 : packageNameOrEnclosing.getRight().access().combine(access);
         builder.setAccess(accessCombined);
         builder.setTypeNature(typeNature);
+        builder.setSource(source(typeInfo, td));
 
         if (td.children().get(i) instanceof ExtendsList extendsList) {
             for (Node child : extendsList.children()) {
@@ -125,7 +126,6 @@ public class ParseTypeDeclaration extends CommonParse {
             }
         } else throw new UnsupportedOperationException("node " + td.children().get(i).getClass());
 
-        builder.setSource(source(typeInfo, td));
         return typeInfo;
     }
 }
