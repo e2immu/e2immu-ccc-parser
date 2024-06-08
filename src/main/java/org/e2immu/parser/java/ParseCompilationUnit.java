@@ -12,10 +12,10 @@ import java.util.List;
 
 public class ParseCompilationUnit {
 
-    private final ParsTypeDeclaration parseTypeDeclaration;
+    private final ParseTypeDeclaration parseTypeDeclaration;
 
     public ParseCompilationUnit(Runtime runtime) {
-        parseTypeDeclaration = new ParsTypeDeclaration(runtime);
+        parseTypeDeclaration = new ParseTypeDeclaration(runtime);
     }
 
     public List<TypeInfo> parse(CompilationUnit compilationUnit) {

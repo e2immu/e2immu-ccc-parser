@@ -58,6 +58,9 @@ public class ParseMethodDeclaration {
             builder.setMethodBody(block);
         } else throw new UnsupportedOperationException("Node " + md.children().get(i).getClass());
         builder.commitParameters();
+
+        builder.setSource(runtime.newParserSource(methodInfo, md.getBeginLine(), md.getBeginColumn(), md.getEndLine(),
+                md.getEndColumn()));
         return methodInfo;
     }
 

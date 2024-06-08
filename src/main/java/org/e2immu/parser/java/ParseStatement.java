@@ -8,6 +8,8 @@ import org.parsers.java.ast.MethodCall;
 import org.parsers.java.ast.Statement;
 import org.parsers.java.ast.StatementExpression;
 
+//statement.getTokenSource().getText(statement.getBeginOffset(), statement.getEndOffset())
+
 public class ParseStatement {
     private final Runtime runtime;
 
