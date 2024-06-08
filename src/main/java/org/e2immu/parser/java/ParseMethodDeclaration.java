@@ -57,6 +57,7 @@ public class ParseMethodDeclaration {
             Block block = parseBlock.parse(methodInfo, codeBlock);
             builder.setMethodBody(block);
         } else throw new UnsupportedOperationException("Node " + md.children().get(i).getClass());
+        builder.commitParameters();
         return methodInfo;
     }
 

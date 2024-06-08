@@ -24,7 +24,6 @@ public class ParsTypeDeclaration {
     public TypeInfo parse(String packageName, TypeDeclaration td) {
         TypeNature typeNature = null;
         int i = 0;
-        Iterator<Node> iterator = td.iterator();
         while (td.children().get(i) instanceof KeyWord) {
             i++;
         }
@@ -34,12 +33,12 @@ public class ParsTypeDeclaration {
             i++;
         } else throw new UnsupportedOperationException();
         TypeInfo typeInfo = new TypeInfoImpl(packageName, simpleName);
-        List<MethodInfo> methods = new ArrayList<>();
+        TypeInfo.Builder builder = typeInfo.builder();
         if (td.children().get(i) instanceof ClassOrInterfaceBody bd) {
             for (Node child : bd.children()) {
                 if (child instanceof MethodDeclaration md) {
                     MethodInfo methodInfo = parseMethodDeclaration.parse(typeInfo, md);
-                    methods.add(methodInfo);
+                    builder.addMethod(methodInfo);
                 }
             }
         } else throw new UnsupportedOperationException("node " + td.children().get(i).getClass());
