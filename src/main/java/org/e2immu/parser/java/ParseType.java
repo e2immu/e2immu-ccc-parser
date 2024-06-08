@@ -8,11 +8,10 @@ import org.parsers.java.ast.KeyWord;
 
 import java.util.List;
 
-public class ParseType {
-    private final Runtime runtime;
+public class ParseType extends CommonParse {
 
     public ParseType(Runtime runtime) {
-        this.runtime = runtime;
+        super(runtime);
     }
 
     public ParameterizedType parse(List<Node> nodes) {

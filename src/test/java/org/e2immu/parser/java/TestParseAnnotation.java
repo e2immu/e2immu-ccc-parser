@@ -15,16 +15,15 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class TestParse {
+public class TestParseAnnotation {
 
     @Language("java")
-   private static final String INPUT = """
+    private static final String INPUT = """
             package a.b;
-            // some comment
-            class C {
-              public static void main(String[] args) {
-                System.out.println("hello");
-              }
+            public @interface Annot {
+              String value() default "";
+              int n();
+              String k() default "k";
             }
             """;
 
@@ -36,22 +35,11 @@ public class TestParse {
         List<TypeInfo> types = new ParseCompilationUnit(runtime).parse(parser.CompilationUnit());
         assertEquals(1, types.size());
         TypeInfo typeInfo = types.get(0);
-        assertEquals("C", typeInfo.simpleName());
-        assertEquals("a.b.C", typeInfo.fullyQualifiedName());
-        assertEquals(1, typeInfo.methods().size());
-        assertNotNull(typeInfo.comments());
-        assertEquals(1, typeInfo.comments().size());
-        Comment comment = typeInfo.comments().get(0);
-        if (comment instanceof SingleLineComment slc) {
-            assertEquals("// some comment\n", slc.print(null).toString());
-        } else fail();
-        if (typeInfo.source() instanceof SourceImpl source) {
-            assertSame(typeInfo, source.info());
-            assertEquals(3, source.beginLine());
-            assertEquals(7, source.endLine());
-        }
-        assertTrue(typeInfo.typeNature().isClass());
+        assertEquals("Annot", typeInfo.simpleName());
+        assertEquals("a.b.Annot", typeInfo.fullyQualifiedName());
+        assertTrue(typeInfo.typeNature().isAnnotation());
 
+        assertEquals(1, typeInfo.methods().size());
         MethodInfo methodInfo = typeInfo.methods().get(0);
         assertEquals("main", methodInfo.name());
         assertEquals("a.b.C.main()", methodInfo.fullyQualifiedName());

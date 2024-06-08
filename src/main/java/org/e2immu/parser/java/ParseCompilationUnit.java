@@ -2,6 +2,7 @@ package org.e2immu.parser.java;
 
 import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.runtime.Runtime;
+import org.e2immu.support.Either;
 import org.parsers.java.Node;
 import org.parsers.java.ast.CompilationUnit;
 import org.parsers.java.ast.PackageDeclaration;
@@ -24,7 +25,7 @@ public class ParseCompilationUnit {
         List<TypeInfo> types = new ArrayList<>();
         for (Node child : compilationUnit.children()) {
             if (child instanceof TypeDeclaration cd) {
-                TypeInfo typeInfo = parseTypeDeclaration.parse(packageName, cd);
+                TypeInfo typeInfo = parseTypeDeclaration.parse(Either.left(packageName), cd);
                 types.add(typeInfo);
             }
         }

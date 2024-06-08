@@ -1,58 +1,131 @@
 package org.e2immu.parser.java;
 
 import org.e2immu.cstapi.element.Comment;
+import org.e2immu.cstapi.info.Access;
 import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.info.TypeInfo;
+import org.e2immu.cstapi.info.TypeModifier;
 import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstapi.type.TypeNature;
+import org.e2immu.cstimpl.info.InspectionImpl;
 import org.e2immu.cstimpl.info.TypeInfoImpl;
+import org.e2immu.cstimpl.info.TypeModifierEnum;
+import org.e2immu.cstimpl.info.TypeNatureEnum;
+import org.e2immu.support.Either;
 import org.parsers.java.Node;
+import org.parsers.java.Token;
 import org.parsers.java.ast.*;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
-public class ParseTypeDeclaration {
+public class ParseTypeDeclaration extends CommonParse {
     private final ParseMethodDeclaration parseMethodDeclaration;
-    private final Runtime runtime;
 
     public ParseTypeDeclaration(Runtime runtime) {
+        super(runtime);
         parseMethodDeclaration = new ParseMethodDeclaration(runtime);
-        this.runtime = runtime;
     }
 
-    public TypeInfo parse(String packageName, TypeDeclaration td) {
-        List<Comment> comments = td.getAllTokens(true).stream().map(t -> {
-            if (t instanceof SingleLineComment slc) {
-                return runtime.newSingleLineComment(slc.getSource());
-            }
-            return null;
-        }).filter(Objects::nonNull).toList();
+    public TypeInfo parse(Either<String, TypeInfo> packageNameOrEnclosing, TypeDeclaration td) {
+        List<Comment> comments = comments(td);
 
+        InspectionImpl.AccessEnum access = InspectionImpl.AccessEnum.PACKAGE;
         TypeNature typeNature = null;
         int i = 0;
-        while (td.children().get(i) instanceof KeyWord) {
+        List<TypeModifier> typeModifiers = new ArrayList<>();
+        while (!(td.children().get(i) instanceof Identifier)) {
+            if (td.children().get(i) instanceof KeyWord keyWord) {
+                Token.TokenType tt = keyWord.getType();
+                TypeModifier typeModifier = switch (tt) {
+                    case PUBLIC -> TypeModifierEnum.PUBLIC;
+                    case PRIVATE -> TypeModifierEnum.PRIVATE;
+                    case PROTECTED -> TypeModifierEnum.PROTECTED;
+                    case FINAL -> TypeModifierEnum.FINAL;
+                    case SEALED -> TypeModifierEnum.SEALED;
+                    case ABSTRACT -> TypeModifierEnum.ABSTRACT;
+                    case NON_SEALED -> TypeModifierEnum.NON_SEALED;
+                    default -> null;
+                };
+                if (typeModifier != null) {
+                    typeModifiers.add(typeModifier);
+                    switch (tt) {
+                        case PUBLIC -> access = InspectionImpl.AccessEnum.PUBLIC;
+                        case PRIVATE -> access = InspectionImpl.AccessEnum.PRIVATE;
+                        case PROTECTED -> access = InspectionImpl.AccessEnum.PROTECTED;
+                    }
+                }
+                TypeNature tn = switch (tt) {
+                    case CLASS -> TypeNatureEnum.CLASS;
+                    case INTERFACE -> td instanceof AnnotationTypeDeclaration
+                            ? TypeNatureEnum.ANNOTATION : TypeNatureEnum.INTERFACE;
+                    case ENUM -> TypeNatureEnum.ENUM;
+                    case RECORD -> TypeNatureEnum.RECORD;
+                    default -> null;
+                };
+                if (tn != null) {
+                    assert typeNature == null;
+                    typeNature = tn;
+                }
+            }
             i++;
         }
+        if (typeNature == null) throw new UnsupportedOperationException("Have not determined type nature");
         String simpleName;
         if (td.children().get(i) instanceof Identifier identifier) {
             simpleName = identifier.getSource();
             i++;
         } else throw new UnsupportedOperationException();
-        TypeInfo typeInfo = new TypeInfoImpl(packageName, simpleName);
+        TypeInfo typeInfo;
+        if (packageNameOrEnclosing.isLeft()) {
+            typeInfo = new TypeInfoImpl(packageNameOrEnclosing.getLeft(), simpleName);
+        } else {
+            typeInfo = new TypeInfoImpl(packageNameOrEnclosing.getRight(), simpleName);
+        }
         TypeInfo.Builder builder = typeInfo.builder();
         builder.addComments(comments);
-        if (td.children().get(i) instanceof ClassOrInterfaceBody bd) {
-            for (Node child : bd.children()) {
+        typeModifiers.forEach(builder::addTypeModifier);
+        Access accessCombined = packageNameOrEnclosing.isLeft() ? access
+                : packageNameOrEnclosing.getRight().access().combine(access);
+        builder.setAccess(accessCombined);
+        builder.setTypeNature(typeNature);
+
+        if (td.children().get(i) instanceof ExtendsList extendsList) {
+            for (Node child : extendsList.children()) {
+
+            }
+            i++;
+        }
+
+        if (td.children().get(i) instanceof ImplementsList implementsList) {
+            for (Node child : implementsList.children()) {
+
+            }
+            i++;
+        }
+
+        Node body = td.children().get(i);
+        if (body instanceof ClassOrInterfaceBody bd) {
+            for (Node child : body.children()) {
                 if (child instanceof MethodDeclaration md) {
                     MethodInfo methodInfo = parseMethodDeclaration.parse(typeInfo, md);
                     builder.addMethod(methodInfo);
                 }
+                if (child instanceof TypeDeclaration subType) {
+                    TypeInfo subTypeInfo = parse(Either.right(typeInfo), subType);
+                    builder.addSubType(subTypeInfo);
+                }
+            }
+        } else if (body instanceof AnnotationTypeBody ab) {
+            for (Node child : body.children()) {
+                if (child instanceof AnnotationMethodDeclaration amd) {
+                    //   MethodInfo methodInfo = parseAnnotation.parse(typeInfo, md);
+                    //   builder.addMethod(methodInfo);
+                }
             }
         } else throw new UnsupportedOperationException("node " + td.children().get(i).getClass());
 
-        builder.setSource(runtime.newParserSource(typeInfo, td.getBeginLine(), td.getBeginColumn(), td.getEndLine(),
-                td.getEndColumn()));
+        builder.setSource(source(typeInfo, td));
         return typeInfo;
     }
 }
