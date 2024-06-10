@@ -28,11 +28,11 @@ public record ForwardTypeImpl(ParameterizedType type, boolean erasure, TypeParam
         return new ForwardTypeImpl(runtime.boxedBooleanTypeInfo().asSimpleParameterizedType(), false);
     }
 
-    public MethodTypeParameterMap computeSAM(InspectionProvider inspectionProvider, TypeInfo primaryType) {
+    public MethodTypeParameterMap computeSAM(Runtime runtime, TypeInfo primaryType) {
         if (type == null || type.isVoid()) return null;
-        MethodTypeParameterMap sam = type.findSingleAbstractMethodOfInterface(inspectionProvider, false);
+        MethodTypeParameterMap sam = MethodTypeParameterMap.findSingleAbstractMethodOfInterface(runtime, type, false);
         if (sam != null) {
-            return sam.expand(inspectionProvider, primaryType, type.initialTypeParameterMap(inspectionProvider));
+            return sam.expand(runtime, primaryType, type.initialTypeParameterMap(runtime));
         }
         return null;
     }
@@ -42,7 +42,8 @@ public record ForwardTypeImpl(ParameterizedType type, boolean erasure, TypeParam
         if (type.isVoid()) return true;
         MethodInfo sam = type.typeInfo().singleAbstractMethod();
         if (sam == null) return false;
-        MethodTypeParameterMap samMap = type.findSingleAbstractMethodOfInterface(runtime, true);
+        MethodTypeParameterMap samMap = MethodTypeParameterMap.findSingleAbstractMethodOfInterface(runtime, type, true);
+        assert samMap != null;
         return samMap.getConcreteReturnType(runtime).isVoid();
     }
 

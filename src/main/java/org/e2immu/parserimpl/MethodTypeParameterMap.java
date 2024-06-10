@@ -9,17 +9,13 @@ import org.e2immu.cstapi.translate.TranslationMap;
 import org.e2immu.cstapi.type.NamedType;
 import org.e2immu.cstapi.type.ParameterizedType;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class MethodTypeParameterMap {
 
-    public final MethodInfo methodInfo;
-    @NotNull
-    public final Map<NamedType, ParameterizedType> concreteTypes;
+    private final MethodInfo methodInfo;
+    private final Map<NamedType, ParameterizedType> concreteTypes;
 
     public MethodTypeParameterMap(MethodInfo methodInfo, @NotNull Map<NamedType, ParameterizedType> concreteTypes) {
         this.methodInfo = methodInfo; // can be null, for SAMs
@@ -65,14 +61,12 @@ public class MethodTypeParameterMap {
         return parameterizedType.applyTranslation(runtime, concreteTypes);
     }
 
-    public MethodTypeParameterMap expand(InspectionProvider inspectionProvider,
-                                         TypeInfo primaryType,
+    public MethodTypeParameterMap expand(Runtime runtime, TypeInfo primaryType,
                                          Map<NamedType, ParameterizedType> mapExpansion) {
         Map<NamedType, ParameterizedType> join = new HashMap<>(concreteTypes);
-        mapExpansion.forEach((k, v) -> join.merge(k, v, (v1, v2) -> v1.mostSpecific(inspectionProvider, primaryType, v2)));
+        mapExpansion.forEach((k, v) -> join.merge(k, v, (v1, v2) -> v1.mostSpecific(runtime, primaryType, v2)));
         return new MethodTypeParameterMap(methodInfo, Map.copyOf(join));
     }
-
 
     @Override
     public String toString() {
@@ -150,13 +144,12 @@ public class MethodTypeParameterMap {
         return methodInfo.returnType().isVoidOrJavaLangVoid() ==
                other.methodInfo.returnType().isVoidOrJavaLangVoid();
     }
-
+/*
     // used in TypeInfo.convertMethodReferenceIntoLambda
-    public MethodInfo.Builder buildCopy(Identifier identifier,
-                                        Runtime runtime,
+    public MethodInfo.Builder buildCopy(Runtime runtime,
                                         TypeInfo typeInfo) {
         String methodName = methodInfo.name();
-        MethodInfo copy = runtime.newMethod(identifier, typeInfo, methodName);
+        MethodInfo copy = runtime.newMethod(typeInfo, methodName, methodInfo.methodType());
         MethodInfo.Builder copyBuilder = copy.builder();
         copyBuilder.addMethodModifier(runtime.methodModifierPUBLIC());
 
@@ -172,7 +165,7 @@ public class MethodTypeParameterMap {
         copy.setReturnType(getConcreteReturnType(runtime.getPrimitives()));
         copy.readyToComputeFQN(runtime);
         return copy;
-    }
+    }*/
 
     public MethodTypeParameterMap translate(TranslationMap translationMap) {
         return new MethodTypeParameterMap(methodInfo, concreteTypes.entrySet().stream()
@@ -199,23 +192,23 @@ public class MethodTypeParameterMap {
     F2C: R in Function -> Stream<E in Coll>
     result: E in Coll = R in flatMap (is of little value here)
      */
-    public Map<NamedType, ParameterizedType> formalOfSamToConcreteTypes(MethodInspection actualMethodInspection, InspectionProvider inspectionProvider) {
+    public Map<NamedType, ParameterizedType> formalOfSamToConcreteTypes(MethodInfo actualMethod, Runtime runtime) {
         Map<NamedType, ParameterizedType> result = new HashMap<>(concreteTypes);
 
-        TypeInspection functionalTypeInspection = inspectionProvider.getTypeInspection(this.methodInfo.getMethodInfo().typeInfo);
-        MethodInspection sam = functionalTypeInspection.getSingleAbstractMethod();
+        TypeInfo functionType = this.methodInfo.typeInfo();
+        MethodInfo sam = functionType.singleAbstractMethod();
         // match types of actual method inspection to type parameters of sam
-        if (sam.getReturnType().isTypeParameter()) {
-            NamedType f2cFrom = sam.getReturnType().typeParameter;
-            ParameterizedType f2cTo = actualMethodInspection.getReturnType();
+        if (sam.returnType().isTypeParameter()) {
+            NamedType f2cFrom = sam.returnType().typeParameter();
+            ParameterizedType f2cTo = actualMethod.returnType();
             ParameterizedType ctTo = concreteTypes.get(f2cFrom);
-            match(inspectionProvider, f2cFrom, f2cTo, ctTo, result);
+            match(runtime, f2cFrom, f2cTo, ctTo, result);
         }
-        if (!actualMethodInspection.getMethodInfo().isStatic() && !functionalTypeInspection.typeParameters().isEmpty()) {
-            NamedType f2cFrom = functionalTypeInspection.typeParameters().get(0);
-            ParameterizedType f2cTo = actualMethodInspection.getMethodInfo().typeInfo.asParameterizedType(inspectionProvider);
+        if (!actualMethod.isStatic() && !functionType.typeParameters().isEmpty()) {
+            NamedType f2cFrom = functionType.typeParameters().get(0);
+            ParameterizedType f2cTo = actualMethod.typeInfo().asParameterizedType();
             ParameterizedType ctTo = concreteTypes.get(f2cFrom);
-            match(inspectionProvider, f2cFrom, f2cTo, ctTo, result);
+            match(runtime, f2cFrom, f2cTo, ctTo, result);
         }
         // TODO for-loop: make an equivalent with more type parameters MethodReference_2
         return result;
@@ -240,4 +233,232 @@ public class MethodTypeParameterMap {
             }
         }
     }
+
+
+    public static MethodTypeParameterMap findSingleAbstractMethodOfInterface(Runtime runtime, ParameterizedType parameterizedType) {
+        return findSingleAbstractMethodOfInterface(runtime, parameterizedType, true);
+    }
+
+    /**
+     * @param complain If false, accept that we're in a functional interface, and do not complain. Only used in the recursion.
+     *                 If true, then starting point of the recursion. We need a functional interface, and will complain at the end.
+     * @return the combination of method and initial type parameter map
+     */
+    public static MethodTypeParameterMap findSingleAbstractMethodOfInterface(Runtime runtime,
+                                                                             ParameterizedType parameterizedType,
+                                                                             boolean complain) {
+        if (parameterizedType.typeInfo() == null) return null;
+        MethodInfo theMethod = parameterizedType.typeInfo().singleAbstractMethod();
+        if (theMethod == null) {
+            if (complain) {
+                throw new UnsupportedOperationException("Cannot find a single abstract method in the interface "
+                                                        + parameterizedType.detailedString());
+            }
+            return null;
+        }
+        /* if theMethod comes from a superType, we need a full type parameter map,
+           e.g., BinaryOperator -> BiFunction.apply, we need concrete values for T, U, V of BiFunction
+         */
+        Map<NamedType, ParameterizedType> map;
+        if (theMethod.typeInfo().equals(parameterizedType.typeInfo())) {
+            map = parameterizedType.initialTypeParameterMap(runtime);
+        } else {
+            map = makeTypeParameterMap(runtime, theMethod, parameterizedType, new HashSet<>());
+            assert map != null; // the method must be somewhere in the hierarchy
+        }
+        return new MethodTypeParameterMap(theMethod, map);
+    }
+
+
+    private static Map<NamedType, ParameterizedType> makeTypeParameterMap(Runtime runtime,
+                                                                          MethodInfo methodInfo,
+                                                                          ParameterizedType here,
+                                                                          Set<TypeInfo> visited) {
+        if (visited.add(here.typeInfo())) {
+            if (here.typeInfo().equals(methodInfo.typeInfo())) {
+                return here.initialTypeParameterMap(runtime);
+            }
+            for (ParameterizedType superType : here.typeInfo().interfacesImplemented()) {
+                Map<NamedType, ParameterizedType> map = makeTypeParameterMap(runtime, methodInfo, superType, visited);
+                if (map != null) {
+                    Map<NamedType, ParameterizedType> concreteHere = here.initialTypeParameterMap(runtime);
+                    Map<NamedType, ParameterizedType> newMap = new HashMap<>();
+                    for (Map.Entry<NamedType, ParameterizedType> e : map.entrySet()) {
+                        ParameterizedType newValue;
+                        if (e.getValue().isTypeParameter()) {
+                            newValue = concreteHere.get(e.getValue().typeParameter());
+                        } else {
+                            newValue = e.getValue();
+                        }
+                        newMap.put(e.getKey(), newValue);
+                    }
+                    return newMap;
+                }
+            }
+        }
+        return null; // not here
+    }
+
+    /*
+    Starting from a formal type (List<E>), fill in a translation map given a concrete type (List<String>)
+    IMPORTANT: the formal type has to have its formal parameters present, i.e., starting from TypeInfo,
+    you should call this method on typeInfo.asParameterizedType(inspectionProvider) to ensure all formal
+    parameters are present in this object.
+
+    In the case of functional interfaces, this method goes via the SAM, avoiding the need of a formal implementation
+    of the interface (i.e., a functional interface can have a SAM which is a function (1 argument, 1 return type)
+    without explicitly implementing java.lang.function.Function)
+
+    The third parameter decides the direction of the relation between the formal and the concrete type.
+    When called from ParseMethodCallExpr, for example, 'this' is the parameter's formal parameter, and the concrete
+    type has to be assignable to it.
+     */
+
+    public static Map<NamedType, ParameterizedType> translateMap(Runtime runtime,
+                                                                 ParameterizedType formalType,
+                                                                 ParameterizedType concreteType,
+                                                                 boolean concreteTypeIsAssignableToThis) {
+        if (formalType.parameters().isEmpty()) {
+            if (formalType.isTypeParameter()) {
+                if (formalType.arrays() > 0) {
+                    if (concreteType.isFunctionalInterface()) {
+                        // T[], Expression[]::new == IntFunction<Expression>
+                        ParameterizedType arrayType = findSingleAbstractMethodOfInterface(runtime, concreteType)
+                                .getConcreteReturnType(runtime);
+                        return Map.of(formalType.typeParameter(), arrayType.copyWithFewerArrays(formalType.arrays()));
+                    }
+                    // T <-- String,  T[],String[] -> T <-- String, T[],String[][] -> T <- String[]
+                    if (concreteType.arrays() > 0) {
+                        return Map.of(formalType.typeParameter(), concreteType.copyWithFewerArrays(formalType.arrays()));
+                    }
+                }
+                return Map.of(formalType.typeParameter(), concreteType);
+            }
+            // String <-- String, no translation map
+            return Map.of();
+        }
+        assert formalType.typeInfo() != null;
+        // no hope if Object or unbound wildcard is the best we have
+        if (concreteType.typeInfo() == null || concreteType.isJavaLangObject()) return Map.of();
+
+        if (formalType.isFunctionalInterface() && concreteType.isFunctionalInterface()) {
+            return translationMapForFunctionalInterfaces(runtime, formalType, concreteType, concreteTypeIsAssignableToThis);
+        }
+
+        Map<NamedType, ParameterizedType> mapOfConcreteType = concreteType.initialTypeParameterMap(runtime);
+        Map<NamedType, ParameterizedType> formalMap;
+        if (formalType.typeInfo() == concreteType.typeInfo()) {
+            // see Lambda_8 Stream<R>, R from flatmap -> Stream<T>
+            formalMap = formalType.forwardTypeParameterMap();
+        } else if (concreteTypeIsAssignableToThis) {
+            // this is the super type (Set), concrete type is the subtype (HashSet)
+            formalMap = mapInTermsOfParametersOfSuperType(runtime, concreteType.typeInfo(), formalType);
+        } else {
+            // concrete type is the super type, we MUST work towards the supertype!
+            formalMap = mapInTermsOfParametersOfSubType(formalType.typeInfo(), concreteType);
+        }
+        if (formalMap == null) return mapOfConcreteType;
+        return combineMaps(mapOfConcreteType, formalMap);
+    }
+
+    // TODO write tests!
+    private static Map<NamedType, ParameterizedType> translationMapForFunctionalInterfaces(Runtime runtime,
+                                                                                           ParameterizedType formalType,
+                                                                                           ParameterizedType concreteType,
+                                                                                           boolean concreteTypeIsAssignableToThis) {
+        Map<NamedType, ParameterizedType> res = new HashMap<>();
+        MethodTypeParameterMap methodTypeParameterMap = findSingleAbstractMethodOfInterface(runtime, formalType);
+        List<ParameterInfo> methodParams = methodTypeParameterMap.methodInfo.parameters();
+        MethodTypeParameterMap concreteTypeMap = findSingleAbstractMethodOfInterface(runtime, concreteType);
+        List<ParameterInfo> concreteTypeAbstractParams = concreteTypeMap.methodInfo.parameters();
+
+        if (methodParams.size() != concreteTypeAbstractParams.size()) {
+            throw new UnsupportedOperationException("Have different param sizes for functional interface " +
+                                                    formalType.detailedString() + " method " +
+                                                    methodTypeParameterMap.methodInfo.fullyQualifiedName() + " and " +
+                                                    concreteTypeMap.methodInfo.fullyQualifiedName());
+        }
+        for (int i = 0; i < methodParams.size(); i++) {
+            ParameterizedType abstractTypeParameter = methodParams.get(i).parameterizedType();
+            ParameterizedType concreteTypeParameter = concreteTypeMap.getConcreteTypeOfParameter(runtime, i);
+            res.putAll(translateMap(runtime, abstractTypeParameter, concreteTypeParameter,
+                    concreteTypeIsAssignableToThis));
+        }
+        // and now the return type
+        ParameterizedType myReturnType = methodTypeParameterMap.getConcreteReturnType(runtime);
+        ParameterizedType concreteReturnType = concreteTypeMap.getConcreteReturnType(runtime);
+        res.putAll(translateMap(runtime, myReturnType, concreteReturnType, concreteTypeIsAssignableToThis));
+        return res;
+    }
+
+    /*
+ StringMap<V> -> HashMap<K,V> -> Map<K, V>
+
+ M2: K(map) -> K(hashmap), M1: K(hashmap) -> String
+  */
+    public static Map<NamedType, ParameterizedType> combineMaps(Map<NamedType, ParameterizedType> m1, Map<NamedType, ParameterizedType> m2) {
+        assert m1 != null;
+        return m2.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
+                e -> e.getValue().isTypeParameter() ? m1.getOrDefault(e.getValue().typeParameter(), e.getValue()) : e.getValue(),
+                (v1, v2) -> {
+                    throw new UnsupportedOperationException();
+                }, LinkedHashMap::new));
+    }
+
+    public static Map<NamedType, ParameterizedType> mapInTermsOfParametersOfSuperType(Runtime runtime,
+                                                                                      TypeInfo ti,
+                                                                                      ParameterizedType superType) {
+        assert superType.typeInfo() != ti;
+        if (ti.parentClass() != null) {
+            if (ti.parentClass().typeInfo() == superType.typeInfo()) {
+                Map<NamedType, ParameterizedType> forward = superType.forwardTypeParameterMap();
+                Map<NamedType, ParameterizedType> formal = ti.parentClass().initialTypeParameterMap(runtime);
+                return combineMaps(forward, formal);
+            }
+            Map<NamedType, ParameterizedType> map = mapInTermsOfParametersOfSuperType(runtime,
+                    ti.parentClass().typeInfo(), superType);
+            if (map != null) {
+                return combineMaps(ti.parentClass().initialTypeParameterMap(runtime), map);
+            }
+        }
+        for (ParameterizedType implementedInterface : ti.interfacesImplemented()) {
+            if (implementedInterface.typeInfo() == superType.typeInfo()) {
+                Map<NamedType, ParameterizedType> forward = superType.forwardTypeParameterMap();
+                Map<NamedType, ParameterizedType> formal = implementedInterface.initialTypeParameterMap(runtime);
+                return combineMaps(formal, forward);
+            }
+            Map<NamedType, ParameterizedType> map = mapInTermsOfParametersOfSuperType(runtime,
+                    implementedInterface.typeInfo(), superType);
+            if (map != null) {
+                return combineMaps(implementedInterface.initialTypeParameterMap(runtime), map);
+            }
+        }
+        return null; // not in this branch of the recursion
+    }
+
+    // practically the duplicate of the previous, except that we should parameterize initialTypeParameterMap as well to collapse them
+    public static Map<NamedType, ParameterizedType> mapInTermsOfParametersOfSubType(TypeInfo ti,
+                                                                                    ParameterizedType superType) {
+        assert superType.typeInfo() != ti;
+        if (ti.parentClass() != null) {
+            if (ti.parentClass().typeInfo() == superType.typeInfo()) {
+                return ti.parentClass().forwardTypeParameterMap();
+            }
+            Map<NamedType, ParameterizedType> map = mapInTermsOfParametersOfSubType(ti.parentClass().typeInfo(), superType);
+            if (map != null) {
+                return combineMaps(map, ti.parentClass().forwardTypeParameterMap());
+            }
+        }
+        for (ParameterizedType implementedInterface : ti.interfacesImplemented()) {
+            if (implementedInterface.typeInfo() == superType.typeInfo()) {
+                return implementedInterface.forwardTypeParameterMap();
+            }
+            Map<NamedType, ParameterizedType> map = mapInTermsOfParametersOfSubType(implementedInterface.typeInfo(), superType);
+            if (map != null) {
+                return combineMaps(map, implementedInterface.forwardTypeParameterMap());
+            }
+        }
+        return null; // not in this branch of the recursion
+    }
+
 }

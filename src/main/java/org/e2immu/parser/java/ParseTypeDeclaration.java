@@ -23,10 +23,12 @@ import java.util.List;
 
 public class ParseTypeDeclaration extends CommonParse {
     private final ParseMethodDeclaration parseMethodDeclaration;
+    private final ParseAnnotationMethodDeclaration parseAnnotationMethodDeclaration;
 
     public ParseTypeDeclaration(Runtime runtime) {
         super(runtime);
         parseMethodDeclaration = new ParseMethodDeclaration(runtime);
+        parseAnnotationMethodDeclaration = new ParseAnnotationMethodDeclaration(runtime);
     }
 
     public TypeInfo parse(Context context,
@@ -109,10 +111,10 @@ public class ParseTypeDeclaration extends CommonParse {
             i++;
         }
 
-        Context newContext = context.newTypeContext("subtypes of " + typeInfo);
+        Context newContext = context.newSubType(typeInfo);
 
         Node body = td.children().get(i);
-        if (body instanceof ClassOrInterfaceBody bd) {
+        if (body instanceof ClassOrInterfaceBody) {
             for (Node child : body.children()) {
                 if (child instanceof MethodDeclaration md) {
                     MethodInfo methodInfo = parseMethodDeclaration.parse(newContext, md);
@@ -123,11 +125,11 @@ public class ParseTypeDeclaration extends CommonParse {
                     builder.addSubType(subTypeInfo);
                 }
             }
-        } else if (body instanceof AnnotationTypeBody ab) {
+        } else if (body instanceof AnnotationTypeBody) {
             for (Node child : body.children()) {
                 if (child instanceof AnnotationMethodDeclaration amd) {
-                    //   MethodInfo methodInfo = parseAnnotation.parse(typeInfo, md);
-                    //   builder.addMethod(methodInfo);
+                       MethodInfo methodInfo = parseAnnotationMethodDeclaration.parse(newContext, amd);
+                       builder.addMethod(methodInfo);
                 }
             }
         } else throw new UnsupportedOperationException("node " + td.children().get(i).getClass());

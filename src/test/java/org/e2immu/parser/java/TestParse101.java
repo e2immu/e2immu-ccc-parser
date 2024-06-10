@@ -3,22 +3,17 @@ package org.e2immu.parser.java;
 import org.e2immu.cstapi.element.Comment;
 import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.info.TypeInfo;
-import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstimpl.element.SingleLineComment;
 import org.e2immu.cstimpl.element.SourceImpl;
-import org.e2immu.cstimpl.runtime.RuntimeImpl;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
-import org.parsers.java.JavaParser;
-
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class TestParse {
+public class TestParse101 extends CommonTestParse {
 
     @Language("java")
-   private static final String INPUT = """
+    private static final String INPUT = """
             package a.b;
             // some comment
             class C {
@@ -30,12 +25,7 @@ public class TestParse {
 
     @Test
     public void test() {
-        JavaParser parser = new JavaParser(INPUT);
-        parser.setParserTolerant(false);
-        Runtime runtime = new RuntimeImpl();
-        List<TypeInfo> types = new ParseCompilationUnit(runtime).parse(parser.CompilationUnit());
-        assertEquals(1, types.size());
-        TypeInfo typeInfo = types.get(0);
+        TypeInfo typeInfo = parse(INPUT);
         assertEquals("C", typeInfo.simpleName());
         assertEquals("a.b.C", typeInfo.fullyQualifiedName());
         assertEquals(1, typeInfo.methods().size());
