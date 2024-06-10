@@ -2,12 +2,13 @@ package org.e2immu.parser.java;
 
 import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.info.ParameterInfo;
-import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstapi.statement.Block;
 import org.e2immu.cstapi.type.ParameterizedType;
 import org.e2immu.cstimpl.info.MethodInfoImpl;
 import org.e2immu.cstimpl.type.ParameterizedTypeImpl;
+import org.e2immu.parserapi.Context;
+import org.e2immu.parserimpl.ForwardTypeImpl;
 import org.parsers.java.Node;
 import org.parsers.java.ast.*;
 
@@ -21,7 +22,7 @@ public class ParseMethodDeclaration extends CommonParse {
         parseType = new ParseType(runtime);
     }
 
-    public MethodInfo parse(TypeInfo typeInfo, MethodDeclaration md) {
+    public MethodInfo parse(Context context, MethodDeclaration md) {
         int i = 0;
         if (md.children().get(i) instanceof Modifiers modifiers) {
             i++;
@@ -42,7 +43,7 @@ public class ParseMethodDeclaration extends CommonParse {
             name = identifier.getSource();
             i++;
         } else throw new UnsupportedOperationException();
-        MethodInfo methodInfo = runtime.newMethod(typeInfo, name, methodType);
+        MethodInfo methodInfo = runtime.newMethod(context.enclosingType(), name, methodType);
         MethodInfo.Builder builder = methodInfo.builder().setReturnType(returnType);
         if (md.children().get(i) instanceof FormalParameters fps) {
             for (Node child : fps.children()) {
@@ -54,7 +55,9 @@ public class ParseMethodDeclaration extends CommonParse {
         } else throw new UnsupportedOperationException("Node " + md.children().get(i).getClass());
         while (i < md.children().size() && md.children().get(i) instanceof Delimiter) i++;
         if (i < md.children().size() && md.children().get(i) instanceof CodeBlock codeBlock) {
-            Block block = parseBlock.parse(methodInfo, codeBlock);
+            ForwardTypeImpl forwardType = new ForwardTypeImpl(returnType);
+            Context newContext = context.newVariableContextForMethodBlock(methodInfo, forwardType);
+            Block block = parseBlock.parse(newContext, codeBlock);
             builder.setMethodBody(block);
         }
         builder.commitParameters();

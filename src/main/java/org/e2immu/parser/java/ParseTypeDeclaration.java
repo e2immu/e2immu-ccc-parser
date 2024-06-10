@@ -1,6 +1,7 @@
 package org.e2immu.parser.java;
 
 import org.e2immu.cstapi.element.Comment;
+import org.e2immu.cstapi.element.CompilationUnit;
 import org.e2immu.cstapi.info.Access;
 import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.info.TypeInfo;
@@ -11,6 +12,7 @@ import org.e2immu.cstimpl.info.InspectionImpl;
 import org.e2immu.cstimpl.info.TypeInfoImpl;
 import org.e2immu.cstimpl.info.TypeModifierEnum;
 import org.e2immu.cstimpl.info.TypeNatureEnum;
+import org.e2immu.parserapi.Context;
 import org.e2immu.support.Either;
 import org.parsers.java.Node;
 import org.parsers.java.Token;
@@ -27,7 +29,9 @@ public class ParseTypeDeclaration extends CommonParse {
         parseMethodDeclaration = new ParseMethodDeclaration(runtime);
     }
 
-    public TypeInfo parse(Either<String, TypeInfo> packageNameOrEnclosing, TypeDeclaration td) {
+    public TypeInfo parse(Context context,
+                          Either<CompilationUnit, TypeInfo> packageNameOrEnclosing,
+                          TypeDeclaration td) {
         List<Comment> comments = comments(td);
 
         InspectionImpl.AccessEnum access = InspectionImpl.AccessEnum.PACKAGE;
@@ -105,15 +109,17 @@ public class ParseTypeDeclaration extends CommonParse {
             i++;
         }
 
+        Context newContext = context.newTypeContext("subtypes of " + typeInfo);
+
         Node body = td.children().get(i);
         if (body instanceof ClassOrInterfaceBody bd) {
             for (Node child : body.children()) {
                 if (child instanceof MethodDeclaration md) {
-                    MethodInfo methodInfo = parseMethodDeclaration.parse(typeInfo, md);
+                    MethodInfo methodInfo = parseMethodDeclaration.parse(newContext, md);
                     builder.addMethod(methodInfo);
                 }
                 if (child instanceof TypeDeclaration subType) {
-                    TypeInfo subTypeInfo = parse(Either.right(typeInfo), subType);
+                    TypeInfo subTypeInfo = parse(newContext, Either.right(typeInfo), subType);
                     builder.addSubType(subTypeInfo);
                 }
             }

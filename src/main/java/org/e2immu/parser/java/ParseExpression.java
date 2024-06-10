@@ -1,11 +1,10 @@
 package org.e2immu.parser.java;
 
 import org.e2immu.cstapi.expression.Expression;
-import org.e2immu.cstapi.info.Info;
 import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.runtime.Runtime;
+import org.e2immu.parserapi.Context;
 import org.parsers.java.Node;
-import org.parsers.java.Token;
 import org.parsers.java.ast.*;
 
 import static org.parsers.java.Token.TokenType.*;
@@ -15,18 +14,18 @@ public class ParseExpression extends CommonParse {
         super(runtime);
     }
 
-    public Expression parse(Info info, Node node) {
+    public Expression parse(Context context, Node node) {
         if (node instanceof MethodCall mc) {
-            return parseMethodCall(info, mc);
+            return parseMethodCall(context, mc);
         }
         if (node instanceof LiteralExpression le) {
-            return parseLiteral(info, le);
+            return parseLiteral(context, le);
         }
         if (node instanceof MultiplicativeExpression me) {
-            return parseMultiplicative(info, me);
+            return parseMultiplicative(context, me);
         }
         if (node instanceof AdditiveExpression ae) {
-            return parseAdditive(info, ae);
+            return parseAdditive(context, ae);
         }
         if (node instanceof Name name) {
             // the name is unresolved at the moment!!!
@@ -37,9 +36,9 @@ public class ParseExpression extends CommonParse {
     }
 
 
-    private Expression parseAdditive(Info info, AdditiveExpression ae) {
-        Expression lhs = parse(info, ae.get(0));
-        Expression rhs = parse(info, ae.get(2));
+    private Expression parseAdditive(Context context, AdditiveExpression ae) {
+        Expression lhs = parse(context, ae.get(0));
+        Expression rhs = parse(context, ae.get(2));
         Node.NodeType token = ae.get(1).getType();
         MethodInfo operator;
         if (token.equals(PLUS)) {
@@ -52,9 +51,9 @@ public class ParseExpression extends CommonParse {
         return runtime.newBinaryOperator(lhs, operator, rhs, runtime.precedenceADDITIVE());
     }
 
-    private Expression parseMultiplicative(Info info, MultiplicativeExpression me) {
-        Expression lhs = parse(info, me.get(0));
-        Expression rhs = parse(info, me.get(2));
+    private Expression parseMultiplicative(Context context, MultiplicativeExpression me) {
+        Expression lhs = parse(context, me.get(0));
+        Expression rhs = parse(context, me.get(2));
         Node.NodeType token = me.get(1).getType();
         MethodInfo operator;
         if (token.equals(STAR)) {
@@ -69,7 +68,7 @@ public class ParseExpression extends CommonParse {
         return runtime.newBinaryOperator(lhs, operator, rhs, runtime.precedenceMULTIPLICATIVE());
     }
 
-    private Expression parseLiteral(Info info, LiteralExpression le) {
+    private Expression parseLiteral(Context context, LiteralExpression le) {
         Node child = le.children().get(0);
         if (child instanceof IntegerLiteral il) {
             return runtime.newInt(il.getValue());
@@ -80,7 +79,7 @@ public class ParseExpression extends CommonParse {
         throw new UnsupportedOperationException("literal expression " + le.getClass());
     }
 
-    private org.e2immu.cstapi.expression.MethodCall parseMethodCall(Info info, MethodCall mc) {
+    private org.e2immu.cstapi.expression.MethodCall parseMethodCall(Context context, MethodCall mc) {
         return runtime.newMethodCall(null, null, null);
     }
 }
