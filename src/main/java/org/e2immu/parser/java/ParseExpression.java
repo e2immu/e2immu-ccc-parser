@@ -1,8 +1,11 @@
 package org.e2immu.parser.java;
 
+import org.e2immu.cstapi.expression.Assignment;
+import org.e2immu.cstapi.expression.Cast;
 import org.e2immu.cstapi.expression.Expression;
 import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.runtime.Runtime;
+import org.e2immu.cstapi.type.ParameterizedType;
 import org.e2immu.cstapi.variable.Variable;
 import org.e2immu.parserapi.Context;
 import org.parsers.java.Node;
@@ -11,8 +14,11 @@ import org.parsers.java.ast.*;
 import static org.parsers.java.Token.TokenType.*;
 
 public class ParseExpression extends CommonParse {
+    private final ParseType parseType;
+
     public ParseExpression(Runtime runtime) {
         super(runtime);
+        parseType = new ParseType(runtime);
     }
 
     public Expression parse(Context context, Node node) {
@@ -38,7 +44,26 @@ public class ParseExpression extends CommonParse {
             Variable v = parseVariable(context, nameAsString);
             return runtime.newVariableExpression(v);
         }
+        if (node instanceof CastExpression castExpression) {
+            return parseCast(context, castExpression);
+        }
+        if (node instanceof AssignmentExpression assignmentExpression) {
+            return parseAssignment(context, assignmentExpression);
+        }
         throw new UnsupportedOperationException("node " + node.getClass());
+    }
+
+    private Assignment parseAssignment(Context context, AssignmentExpression assignmentExpression) {
+        Expression target = parse(context, assignmentExpression.get(0));
+        Expression value = parse(context, assignmentExpression.get(2));
+        return runtime.newAssignment(target, value);
+    }
+
+    private Cast parseCast(Context context, CastExpression castExpression) {
+        // 0 = '(', 2 = ')'
+        ParameterizedType pt = parseType.parse(context, castExpression.get(1));
+        Expression expression = parse(context, castExpression.get(3));
+        return runtime.newCast(expression, pt);
     }
 
     private Variable parseVariable(Context context, String name) {

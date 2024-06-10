@@ -13,6 +13,7 @@ import org.parsers.java.ast.TypeDeclaration;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class ParseCompilationUnit extends CommonParse {
     private final Context rootContext;
@@ -28,7 +29,8 @@ public class ParseCompilationUnit extends CommonParse {
 
     public List<TypeInfo> parse(CompilationUnit compilationUnit) {
         PackageDeclaration packageDeclaration = compilationUnit.getPackageDeclaration();
-        String packageName = packageDeclaration.getName();
+        String packageName = packageDeclaration == null ? ""
+                : Objects.requireNonNullElse(packageDeclaration.getName(), "");
         org.e2immu.cstapi.element.CompilationUnit cu = runtime.newCompilationUnitBuilder()
                 .setPackageName(packageName).build();
         Context newContext = rootContext.newCompilationUnit(typeMap, cu);

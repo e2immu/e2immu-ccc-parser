@@ -36,6 +36,7 @@ public class ParseStatement extends CommonParse {
         }
         if (statement instanceof ReturnStatement rs) {
             org.e2immu.cstapi.expression.Expression e = parseExpression.parse(context, rs.get(1));
+            assert e != null;
             return runtime.newReturnStatementBuilder()
                     .setExpression(e).setSource(source).addComments(comments)
                     .build();
