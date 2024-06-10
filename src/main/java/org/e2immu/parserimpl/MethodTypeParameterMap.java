@@ -206,7 +206,7 @@ public class MethodTypeParameterMap {
         }
         if (!actualMethod.isStatic() && !functionType.typeParameters().isEmpty()) {
             NamedType f2cFrom = functionType.typeParameters().get(0);
-            ParameterizedType f2cTo = actualMethod.typeInfo().asParameterizedType();
+            ParameterizedType f2cTo = actualMethod.typeInfo().asParameterizedType(runtime);
             ParameterizedType ctTo = concreteTypes.get(f2cFrom);
             match(runtime, f2cFrom, f2cTo, ctTo, result);
         }
@@ -223,7 +223,7 @@ public class MethodTypeParameterMap {
     private void match(Runtime runtime, NamedType f2cFrom, ParameterizedType f2cTo,
                        ParameterizedType ctTo, Map<NamedType, ParameterizedType> result) {
         if (f2cTo.isAssignableFrom(runtime, ctTo)) {
-            ParameterizedType concreteSuperType = ctTo.concreteSuperType(f2cTo);
+            ParameterizedType concreteSuperType = ctTo.concreteSuperType(runtime, f2cTo);
             int i = 0;
             for (ParameterizedType pt : f2cTo.parameters()) {
                 if (pt.isTypeParameter()) {
@@ -349,13 +349,13 @@ public class MethodTypeParameterMap {
         Map<NamedType, ParameterizedType> formalMap;
         if (formalType.typeInfo() == concreteType.typeInfo()) {
             // see Lambda_8 Stream<R>, R from flatmap -> Stream<T>
-            formalMap = formalType.forwardTypeParameterMap();
+            formalMap = formalType.forwardTypeParameterMap(runtime);
         } else if (concreteTypeIsAssignableToThis) {
             // this is the super type (Set), concrete type is the subtype (HashSet)
             formalMap = mapInTermsOfParametersOfSuperType(runtime, concreteType.typeInfo(), formalType);
         } else {
             // concrete type is the super type, we MUST work towards the supertype!
-            formalMap = mapInTermsOfParametersOfSubType(formalType.typeInfo(), concreteType);
+            formalMap = mapInTermsOfParametersOfSubType(runtime, formalType.typeInfo(), concreteType);
         }
         if (formalMap == null) return mapOfConcreteType;
         return combineMaps(mapOfConcreteType, formalMap);
@@ -411,7 +411,7 @@ public class MethodTypeParameterMap {
         assert superType.typeInfo() != ti;
         if (ti.parentClass() != null) {
             if (ti.parentClass().typeInfo() == superType.typeInfo()) {
-                Map<NamedType, ParameterizedType> forward = superType.forwardTypeParameterMap();
+                Map<NamedType, ParameterizedType> forward = superType.forwardTypeParameterMap(runtime);
                 Map<NamedType, ParameterizedType> formal = ti.parentClass().initialTypeParameterMap(runtime);
                 return combineMaps(forward, formal);
             }
@@ -423,7 +423,7 @@ public class MethodTypeParameterMap {
         }
         for (ParameterizedType implementedInterface : ti.interfacesImplemented()) {
             if (implementedInterface.typeInfo() == superType.typeInfo()) {
-                Map<NamedType, ParameterizedType> forward = superType.forwardTypeParameterMap();
+                Map<NamedType, ParameterizedType> forward = superType.forwardTypeParameterMap(runtime);
                 Map<NamedType, ParameterizedType> formal = implementedInterface.initialTypeParameterMap(runtime);
                 return combineMaps(formal, forward);
             }
@@ -437,25 +437,28 @@ public class MethodTypeParameterMap {
     }
 
     // practically the duplicate of the previous, except that we should parameterize initialTypeParameterMap as well to collapse them
-    public static Map<NamedType, ParameterizedType> mapInTermsOfParametersOfSubType(TypeInfo ti,
+    public static Map<NamedType, ParameterizedType> mapInTermsOfParametersOfSubType(Runtime runtime,
+                                                                                    TypeInfo ti,
                                                                                     ParameterizedType superType) {
         assert superType.typeInfo() != ti;
         if (ti.parentClass() != null) {
             if (ti.parentClass().typeInfo() == superType.typeInfo()) {
-                return ti.parentClass().forwardTypeParameterMap();
+                return ti.parentClass().forwardTypeParameterMap(runtime);
             }
-            Map<NamedType, ParameterizedType> map = mapInTermsOfParametersOfSubType(ti.parentClass().typeInfo(), superType);
+            Map<NamedType, ParameterizedType> map = mapInTermsOfParametersOfSubType(runtime,
+                    ti.parentClass().typeInfo(), superType);
             if (map != null) {
-                return combineMaps(map, ti.parentClass().forwardTypeParameterMap());
+                return combineMaps(map, ti.parentClass().forwardTypeParameterMap(runtime));
             }
         }
         for (ParameterizedType implementedInterface : ti.interfacesImplemented()) {
             if (implementedInterface.typeInfo() == superType.typeInfo()) {
-                return implementedInterface.forwardTypeParameterMap();
+                return implementedInterface.forwardTypeParameterMap(runtime);
             }
-            Map<NamedType, ParameterizedType> map = mapInTermsOfParametersOfSubType(implementedInterface.typeInfo(), superType);
+            Map<NamedType, ParameterizedType> map = mapInTermsOfParametersOfSubType(runtime,
+                    implementedInterface.typeInfo(), superType);
             if (map != null) {
-                return combineMaps(map, implementedInterface.forwardTypeParameterMap());
+                return combineMaps(map, implementedInterface.forwardTypeParameterMap(runtime));
             }
         }
         return null; // not in this branch of the recursion

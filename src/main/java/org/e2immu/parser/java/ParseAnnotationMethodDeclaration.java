@@ -32,7 +32,7 @@ public class ParseAnnotationMethodDeclaration extends CommonParse {
         if (amd.children().get(i) instanceof Type type) {
             // depending on the modifiers...
             methodType = runtime.newMethodTypeMethod();
-            returnType = parseType.parse(type);
+            returnType = parseType.parse(context, type);
             i++;
         } else throw new UnsupportedOperationException();
         String name;
@@ -49,23 +49,5 @@ public class ParseAnnotationMethodDeclaration extends CommonParse {
         builder.addComments(comments(amd));
         builder.setSource(source(methodInfo, amd));
         return methodInfo;
-    }
-
-    private void parseFormalParameter(MethodInfo.Builder builder, FormalParameter fp) {
-        ParameterizedType typeOfParameter;
-        Node node0 = fp.children().get(0);
-        if (node0 instanceof PrimitiveType primitiveType) {
-            typeOfParameter = parseType.parse(primitiveType);
-        } else if (node0 instanceof ReferenceType referenceType) {
-            typeOfParameter = parseType.parse(referenceType.children());
-        } else throw new UnsupportedOperationException();
-        String parameterName;
-        Node node1 = fp.children().get(1);
-        if (node1 instanceof Identifier identifier) {
-            parameterName = identifier.getSource();
-        } else throw new UnsupportedOperationException();
-        ParameterInfo pi = builder.addParameter(parameterName, typeOfParameter);
-        ParameterInfo.Builder piBuilder = pi.builder();
-        // do not commit!
     }
 }

@@ -44,7 +44,7 @@ public class TestParse101 extends CommonTestParse {
 
         MethodInfo methodInfo = typeInfo.methods().get(0);
         assertEquals("main", methodInfo.name());
-        assertEquals("a.b.C.main()", methodInfo.fullyQualifiedName());
+        assertEquals("a.b.C.main(String[])", methodInfo.fullyQualifiedName());
         if (methodInfo.source() instanceof SourceImpl source) {
             assertSame(methodInfo, source.info());
             assertEquals(4, source.beginLine());

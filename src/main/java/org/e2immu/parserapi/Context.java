@@ -6,6 +6,7 @@ import org.e2immu.cstapi.info.Info;
 import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.runtime.Runtime;
+import org.e2immu.cstapi.type.ParameterizedType;
 import org.e2immu.resourceapi.TypeMap;
 
 public interface Context {

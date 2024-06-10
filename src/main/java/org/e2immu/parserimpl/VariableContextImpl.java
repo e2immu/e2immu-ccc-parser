@@ -60,10 +60,12 @@ public class VariableContextImpl implements VariableContext {
         }
     }
 
+    @Override
     public void add(ParameterInfo variable) {
         parameters.put(variable.simpleName(), variable);
     }
 
+    @Override
     public void add(LocalVariable variable) {
         localVars.put(variable.simpleName(), variable);
     }

@@ -24,7 +24,7 @@ public class ParseMethodDeclaration extends CommonParse {
 
     public MethodInfo parse(Context context, MethodDeclaration md) {
         int i = 0;
-        if (md.children().get(i) instanceof Modifiers modifiers) {
+        if (md.children().get(i) instanceof Modifiers || md.children().get(i) instanceof KeyWord) {
             i++;
         }
         MethodInfo.MethodType methodType;
@@ -32,7 +32,7 @@ public class ParseMethodDeclaration extends CommonParse {
         if (md.children().get(i) instanceof ReturnType rt) {
             // depending on the modifiers...
             methodType = runtime.newMethodTypeMethod();
-            returnType = parseType.parse(rt.children());
+            returnType = parseType.parse(context, rt.children());
             i++;
         } else if (md.children().get(i) instanceof Identifier) {
             methodType = MethodInfoImpl.MethodTypeEnum.CONSTRUCTOR; // FIXME
@@ -48,7 +48,7 @@ public class ParseMethodDeclaration extends CommonParse {
         if (md.children().get(i) instanceof FormalParameters fps) {
             for (Node child : fps.children()) {
                 if (child instanceof FormalParameter fp) {
-                    parseFormalParameter(builder, fp);
+                    parseFormalParameter(context, builder, fp);
                 }
             }
             i++;
@@ -67,13 +67,13 @@ public class ParseMethodDeclaration extends CommonParse {
         return methodInfo;
     }
 
-    private void parseFormalParameter(MethodInfo.Builder builder, FormalParameter fp) {
+    private void parseFormalParameter(Context context, MethodInfo.Builder builder, FormalParameter fp) {
         ParameterizedType typeOfParameter;
         Node node0 = fp.children().get(0);
         if (node0 instanceof PrimitiveType primitiveType) {
-            typeOfParameter = parseType.parse(primitiveType);
+            typeOfParameter = parseType.parse(context, primitiveType);
         } else if (node0 instanceof ReferenceType referenceType) {
-            typeOfParameter = parseType.parse(referenceType.children());
+            typeOfParameter = parseType.parse(context, referenceType.children());
         } else throw new UnsupportedOperationException();
         String parameterName;
         Node node1 = fp.children().get(1);
@@ -82,6 +82,7 @@ public class ParseMethodDeclaration extends CommonParse {
         } else throw new UnsupportedOperationException();
         ParameterInfo pi = builder.addParameter(parameterName, typeOfParameter);
         ParameterInfo.Builder piBuilder = pi.builder();
-        // do not commit!
+        // do not commit yet!
+        context.variableContext().add(pi);
     }
 }

@@ -14,7 +14,9 @@ import java.util.List;
 
 public class CommonTestParse {
 
-    static class TypeMapBuilder implements TypeMap.Builder {
+    protected final Runtime runtime = new RuntimeImpl();
+
+    class TypeMapBuilder implements TypeMap.Builder {
 
         @Override
         public TypeInfo getOrCreate(String fqn, boolean complain) {
@@ -33,6 +35,7 @@ public class CommonTestParse {
 
         @Override
         public TypeInfo get(String fullyQualifiedName) {
+            if ("java.lang.String".equals(fullyQualifiedName)) return runtime.stringTypeInfo();
             throw new UnsupportedOperationException();
         }
 
@@ -45,7 +48,6 @@ public class CommonTestParse {
     protected TypeInfo parse(String input) {
         JavaParser parser = new JavaParser(input);
         parser.setParserTolerant(false);
-        Runtime runtime = new RuntimeImpl();
         TypeMap.Builder typeMapBuilder = new TypeMapBuilder();
         Context rootContext = new ContextImpl(runtime, null, null, null,
                 null, null, null, null);

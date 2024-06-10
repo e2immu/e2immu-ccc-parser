@@ -3,6 +3,7 @@ package org.e2immu.parser.java;
 import org.e2immu.cstapi.expression.Expression;
 import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.runtime.Runtime;
+import org.e2immu.cstapi.variable.Variable;
 import org.e2immu.parserapi.Context;
 import org.parsers.java.Node;
 import org.parsers.java.ast.*;
@@ -28,13 +29,21 @@ public class ParseExpression extends CommonParse {
             return parseAdditive(context, ae);
         }
         if (node instanceof Name name) {
-            // the name is unresolved at the moment!!!
-            return runtime.newVariableExpression(runtime.newLocalVariable(name.getAsString(),
-                    runtime.parameterizedTypeRETURN_TYPE_OF_CONSTRUCTOR()));
+            String nameAsString = name.getAsString();
+            if (nameAsString.endsWith(".length")) {
+                Variable array = parseVariable(context, nameAsString.substring(0, nameAsString.length() - 7));
+                assert array != null;
+                return runtime.newArrayLength(runtime.newVariableExpression(array));
+            }
+            Variable v = parseVariable(context, nameAsString);
+            return runtime.newVariableExpression(v);
         }
         throw new UnsupportedOperationException("node " + node.getClass());
     }
 
+    private Variable parseVariable(Context context, String name) {
+        return context.variableContext().get(name, true);
+    }
 
     private Expression parseAdditive(Context context, AdditiveExpression ae) {
         Expression lhs = parse(context, ae.get(0));
