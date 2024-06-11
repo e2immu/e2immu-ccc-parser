@@ -1,6 +1,7 @@
 package org.e2immu.parser.java;
 
 import org.e2immu.cstapi.expression.VariableExpression;
+import org.e2immu.cstapi.info.Access;
 import org.e2immu.cstapi.info.FieldInfo;
 import org.e2immu.cstapi.info.FieldModifier;
 import org.e2immu.cstapi.info.TypeInfo;
@@ -38,25 +39,34 @@ public class ParseFieldDeclaration extends CommonParse {
             i++;
         }
         boolean isStatic = fieldModifiers.stream().anyMatch(FieldModifier::isStatic);
+        Access access = access(fieldModifiers);
+        Access accessCombined = context.enclosingType().access().combine(access);
+
         ParameterizedType parameterizedType;
         if (fd.get(i) instanceof Type type) {
             parameterizedType = parseType.parse(context, type);
             i++;
         } else throw new UnsupportedOperationException();
         String name;
-        Expression expression = null;
+        Expression expression;
         if (fd.get(i) instanceof VariableDeclarator vd) {
-            int j = 0;
             if (vd.get(0) instanceof Identifier identifier) {
                 name = identifier.getSource();
-                j++;
             } else throw new UnsupportedOperationException();
+            if (vd.children().size() >= 3 && vd.get(2) instanceof Expression e) {
+                expression = e;
+            } else {
+                expression = null;
+            }
         } else throw new UnsupportedOperationException();
 
 
         TypeInfo owner = context.enclosingType();
-        FieldInfo fieldInfo = new FieldInfoImpl(name, isStatic, parameterizedType, owner);
+        FieldInfo fieldInfo = runtime.newFieldInfo(name, isStatic, parameterizedType, owner);
         FieldInfo.Builder builder = fieldInfo.builder();
+        builder.setAccess(accessCombined);
+        builder.setSource(source(fieldInfo, fd));
+        builder.addComments(comments(fd));
 
         fieldModifiers.forEach(builder::addFieldModifier);
         VariableExpression scope = runtime.newVariableExpression(runtime.newThis(fieldInfo.owner()));
@@ -66,6 +76,15 @@ public class ParseFieldDeclaration extends CommonParse {
             context.resolver().add(fieldInfo.builder(), expression, context);
         }
         return fieldInfo;
+    }
+
+    private Access access(List<FieldModifier> fieldModifiers) {
+        for (FieldModifier fieldModifier : fieldModifiers) {
+            if (fieldModifier.isPublic()) return runtime.newAccessPublic();
+            if (fieldModifier.isPrivate()) return runtime.newAccessPrivate();
+            if (fieldModifier.isProtected()) return runtime.newAccessProtected();
+        }
+        return runtime.newAccessPackage();
     }
 
     private FieldModifier modifier(KeyWord keyWord) {

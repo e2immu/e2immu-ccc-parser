@@ -22,9 +22,12 @@ public class ParseType extends CommonParse {
         Token.TokenType tt;
         ParameterizedType pt;
         Node n0 = nodes.get(0);
-        if (n0 instanceof ObjectType ot && ot.get(0) instanceof Identifier id) {
+        if (n0 instanceof Identifier identifier) {
+            NamedType nt = context.typeContext().get(identifier.getSource(), true);
+            pt = ((TypeInfo) nt).asParameterizedType(context.runtime());
+        } else if (n0 instanceof ObjectType ot && ot.get(0) instanceof Identifier id) {
             NamedType nt = context.typeContext().get(id.getSource(), true);
-            pt = ((TypeInfo)nt).asParameterizedType(context.runtime());
+            pt = ((TypeInfo) nt).asParameterizedType(context.runtime());
         } else {
             if (n0 instanceof PrimitiveType primitive && primitive.get(0) instanceof Primitive p) {
                 tt = p.getType();

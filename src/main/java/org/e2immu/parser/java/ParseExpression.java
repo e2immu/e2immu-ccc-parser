@@ -110,6 +110,23 @@ public class ParseExpression extends CommonParse {
         if (child instanceof BooleanLiteral bl) {
             return runtime.newBooleanConstant("true".equals(bl.getSource()));
         }
+        if (child instanceof CharacterLiteral cl) {
+            char c = cl.charAt(1);
+            if (c == '\\') {
+                char c2 = cl.charAt(2);
+                c = switch (c2) {
+                    case 'b' -> '\b';
+                    case 'r' -> '\r';
+                    case 't' -> '\t';
+                    case 'n' -> '\n';
+                    case 'f' -> '\f';
+                    case '\'' -> '\'';
+                    case '\\' -> '\\';
+                    default -> throw new UnsupportedOperationException();
+                };
+            }
+            return runtime.newChar(c);
+        }
         throw new UnsupportedOperationException("literal expression " + le.getClass());
     }
 

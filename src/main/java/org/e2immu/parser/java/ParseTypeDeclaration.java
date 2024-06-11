@@ -11,6 +11,7 @@ import org.e2immu.cstimpl.info.TypeModifierEnum;
 import org.e2immu.cstimpl.info.TypeNatureEnum;
 import org.e2immu.parserapi.Context;
 import org.e2immu.support.Either;
+import org.jetbrains.annotations.Nullable;
 import org.parsers.java.Node;
 import org.parsers.java.Token;
 import org.parsers.java.ast.*;
@@ -36,37 +37,22 @@ public class ParseTypeDeclaration extends CommonParse {
                           TypeDeclaration td) {
         List<Comment> comments = comments(td);
 
-        InspectionImpl.AccessEnum access = InspectionImpl.AccessEnum.PACKAGE;
         TypeNature typeNature = null;
         int i = 0;
         List<TypeModifier> typeModifiers = new ArrayList<>();
         while (!(td.children().get(i) instanceof Identifier)) {
             if (td.children().get(i) instanceof KeyWord keyWord) {
                 Token.TokenType tt = keyWord.getType();
-                TypeModifier typeModifier = switch (tt) {
-                    case PUBLIC -> TypeModifierEnum.PUBLIC;
-                    case PRIVATE -> TypeModifierEnum.PRIVATE;
-                    case PROTECTED -> TypeModifierEnum.PROTECTED;
-                    case FINAL -> TypeModifierEnum.FINAL;
-                    case SEALED -> TypeModifierEnum.SEALED;
-                    case ABSTRACT -> TypeModifierEnum.ABSTRACT;
-                    case NON_SEALED -> TypeModifierEnum.NON_SEALED;
-                    default -> null;
-                };
+                TypeModifier typeModifier = getTypeModifier(tt);
                 if (typeModifier != null) {
                     typeModifiers.add(typeModifier);
-                    switch (tt) {
-                        case PUBLIC -> access = InspectionImpl.AccessEnum.PUBLIC;
-                        case PRIVATE -> access = InspectionImpl.AccessEnum.PRIVATE;
-                        case PROTECTED -> access = InspectionImpl.AccessEnum.PROTECTED;
-                    }
                 }
                 TypeNature tn = switch (tt) {
-                    case CLASS -> TypeNatureEnum.CLASS;
+                    case CLASS -> runtime.newTypeNatureClass();
                     case INTERFACE -> td instanceof AnnotationTypeDeclaration
-                            ? TypeNatureEnum.ANNOTATION : TypeNatureEnum.INTERFACE;
-                    case ENUM -> TypeNatureEnum.ENUM;
-                    case RECORD -> TypeNatureEnum.RECORD;
+                            ? runtime.newTypeNatureAnnotation() : runtime.newTypeNatureInterface();
+                    case ENUM -> runtime.newTypeNatureEnum();
+                    case RECORD -> runtime.newTypeNatureRecord();
                     default -> null;
                 };
                 if (tn != null) {
@@ -91,6 +77,7 @@ public class ParseTypeDeclaration extends CommonParse {
         TypeInfo.Builder builder = typeInfo.builder();
         builder.addComments(comments);
         typeModifiers.forEach(builder::addTypeModifier);
+        Access access = access(typeModifiers);
         Access accessCombined = packageNameOrEnclosing.isLeft() ? access
                 : packageNameOrEnclosing.getRight().access().combine(access);
         builder.setAccess(accessCombined);
@@ -162,5 +149,28 @@ public class ParseTypeDeclaration extends CommonParse {
 
         context.resolver().add(builder);
         return typeInfo;
+    }
+
+    private Access access(List<TypeModifier> typeModifiers) {
+        for (TypeModifier typeModifier : typeModifiers) {
+            if (typeModifier.isPublic()) return runtime.newAccessPublic();
+            if (typeModifier.isPrivate()) return runtime.newAccessPrivate();
+            if (typeModifier.isProtected()) return runtime.newAccessProtected();
+        }
+        return runtime.newAccessPackage();
+    }
+
+    private TypeModifier getTypeModifier(Token.TokenType tt) {
+        return switch (tt) {
+            case PUBLIC -> runtime.newTypeModifierPublic();
+            case PRIVATE -> runtime.newTypeModifierPrivate();
+            case PROTECTED -> runtime.newTypeModifierProtected();
+            case FINAL -> runtime.newTypeModifierFinal();
+            case SEALED -> runtime.newTypeModifierSealed();
+            case ABSTRACT -> runtime.newTypeModifierAbstract();
+            case NON_SEALED -> runtime.newTypeModifierNonSealed();
+            case STATIC -> runtime.newTypeModifierStatic();
+            default -> null;
+        };
     }
 }
