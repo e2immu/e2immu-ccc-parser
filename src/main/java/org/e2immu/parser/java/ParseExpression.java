@@ -3,17 +3,24 @@ package org.e2immu.parser.java;
 import org.e2immu.cstapi.expression.Assignment;
 import org.e2immu.cstapi.expression.Cast;
 import org.e2immu.cstapi.expression.Expression;
+import org.e2immu.cstapi.expression.VariableExpression;
+import org.e2immu.cstapi.info.FieldInfo;
 import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstapi.type.ParameterizedType;
+import org.e2immu.cstapi.variable.FieldReference;
 import org.e2immu.cstapi.variable.Variable;
 import org.e2immu.parserapi.Context;
 import org.parsers.java.Node;
 import org.parsers.java.ast.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.parsers.java.Token.TokenType.*;
 
 public class ParseExpression extends CommonParse {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ParseExpression.class);
+
     private final ParseType parseType;
 
     public ParseExpression(Runtime runtime) {
@@ -22,6 +29,18 @@ public class ParseExpression extends CommonParse {
     }
 
     public Expression parse(Context context, Node node) {
+        try {
+            return internalParse(context, node);
+        } catch (Throwable t) {
+            LOGGER.error("Caught exception parsing expression at line {}, pos {}", node.getBeginLine(), node.getBeginColumn());
+            throw t;
+        }
+    }
+
+    private Expression internalParse(Context context, Node node) {
+        if (node instanceof DotName dotName) {
+            return parseDotName(context, dotName);
+        }
         if (node instanceof MethodCall mc) {
             return parseMethodCall(context, mc);
         }
@@ -51,6 +70,24 @@ public class ParseExpression extends CommonParse {
             return parseAssignment(context, assignmentExpression);
         }
         throw new UnsupportedOperationException("node " + node.getClass());
+    }
+
+    private VariableExpression parseDotName(Context context, DotName dotName) {
+        String name = dotName.get(2).getSource();
+        Expression scope;
+        FieldInfo fieldInfo;
+        Node n0 = dotName.get(0);
+        if (n0 instanceof LiteralExpression le) {
+            if ("this".equals(le.getAsString())) {
+                scope = runtime.newVariableExpression(runtime.newThis(context.enclosingType()));
+                fieldInfo = context.enclosingType().getFieldByName(name, true);
+            } else throw new UnsupportedOperationException("NYI");
+        } else {
+            scope = parse(context, n0);
+            throw new UnsupportedOperationException();
+        }
+        FieldReference fr = runtime.newFieldReference(fieldInfo, scope);
+        return runtime.newVariableExpression(fr);
     }
 
     private Assignment parseAssignment(Context context, AssignmentExpression assignmentExpression) {

@@ -1,8 +1,20 @@
 package org.e2immu.parser.java;
 
+import org.e2immu.cstapi.expression.Assignment;
+import org.e2immu.cstapi.expression.Cast;
+import org.e2immu.cstapi.expression.MethodCall;
+import org.e2immu.cstapi.expression.VariableExpression;
+import org.e2immu.cstapi.info.FieldInfo;
+import org.e2immu.cstapi.info.MethodInfo;
+import org.e2immu.cstapi.info.ParameterInfo;
 import org.e2immu.cstapi.info.TypeInfo;
+import org.e2immu.cstapi.statement.ExpressionAsStatement;
+import org.e2immu.cstapi.statement.ReturnStatement;
+import org.e2immu.cstapi.variable.FieldReference;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TestParseSplitExpression0 extends CommonTestParse {
 
@@ -26,7 +38,7 @@ public class TestParseSplitExpression0 extends CommonTestParse {
                 public int same1(int k) {
                     return method(compute(3), compute(k), j = k + 2, compute(j));
                 }
-                
+                        
                 public int same2(int k) {
                     int c3 = compute(3);
                     int ck = compute(k);
@@ -63,5 +75,43 @@ public class TestParseSplitExpression0 extends CommonTestParse {
     @Test
     public void test() {
         TypeInfo typeInfo = parse(INPUT);
+        assertEquals(2, typeInfo.fields().size());
+        FieldInfo base = typeInfo.fields().get(0);
+        assertTrue(base.isFinal());
+        FieldInfo j = typeInfo.fields().get(1);
+        assertFalse(j.isFinal());
+
+        assertEquals(7, typeInfo.methods().size());
+        assertEquals(1, typeInfo.constructors().size());
+
+        MethodInfo constructor = typeInfo.findConstructor(1);
+        assertSame(constructor, typeInfo.constructors().get(0));
+        assertTrue(constructor.isPublic());
+        assertEquals(1, constructor.methodBody().statements().size());
+        if (constructor.methodBody().statements().get(0) instanceof ExpressionAsStatement eas
+            && eas.expression() instanceof Assignment assignment) {
+            assertEquals("this.base=base", assignment.toString());
+            if (assignment.variableTarget() instanceof FieldReference fr) {
+                assertTrue(fr.scopeIsThis());
+                assertEquals("base", fr.fieldInfo().name());
+                assertSame(base, fr.fieldInfo());
+            } else fail();
+            if (assignment.value() instanceof VariableExpression ve && ve.variable() instanceof ParameterInfo pi) {
+                assertSame(pi, constructor.parameters().get(0));
+            } else fail();
+        } else fail();
+
+
+        MethodInfo method = typeInfo.findUniqueMethod("method", 4);
+        assertTrue(method.isAbstract());
+
+        MethodInfo compute = typeInfo.findUniqueMethod("compute", 1);
+        assertEquals(1, compute.methodBody().statements().size());
+        if (compute.methodBody().statements().get(0) instanceof ReturnStatement rs
+            && rs.expression() instanceof Cast cast
+            && cast.expression() instanceof MethodCall mc) {
+            assertSame(runtime.intTypeInfo(), cast.parameterizedType().typeInfo());
+            assertEquals(2, mc.parameterExpressions().size());
+        } else fail();
     }
 }

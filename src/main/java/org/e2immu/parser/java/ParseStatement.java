@@ -8,14 +8,17 @@ import org.e2immu.cstapi.statement.LocalVariableCreation;
 import org.e2immu.cstapi.type.ParameterizedType;
 import org.e2immu.cstapi.variable.LocalVariable;
 import org.e2immu.parserapi.Context;
-import org.e2immu.parserapi.TypeContext;
 import org.parsers.java.ast.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 import java.util.List;
 
 
 public class ParseStatement extends CommonParse {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ParseStatement.class);
+
     private final ParseExpression parseExpression;
     private final ParseType parseType;
 
@@ -26,6 +29,15 @@ public class ParseStatement extends CommonParse {
     }
 
     public org.e2immu.cstapi.statement.Statement parse(Context context, Statement statement) {
+        try {
+            return internalParse(context, statement);
+        } catch (Throwable t) {
+            LOGGER.error("Caught exception parsing statement at line {}", statement.getBeginLine());
+            throw t;
+        }
+    }
+
+    private org.e2immu.cstapi.statement.Statement internalParse(Context context, Statement statement) {
         List<Comment> comments = comments(statement);
         Source source = source(context.enclosingMethod(), statement);
 

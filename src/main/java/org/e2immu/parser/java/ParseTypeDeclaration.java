@@ -21,6 +21,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class ParseTypeDeclaration extends CommonParse {
+    private final ParseConstructorDeclaration parseConstructorDeclaration;
     private final ParseMethodDeclaration parseMethodDeclaration;
     private final ParseAnnotationMethodDeclaration parseAnnotationMethodDeclaration;
     private final ParseFieldDeclaration parseFieldDeclaration;
@@ -30,6 +31,7 @@ public class ParseTypeDeclaration extends CommonParse {
         parseMethodDeclaration = new ParseMethodDeclaration(runtime);
         parseAnnotationMethodDeclaration = new ParseAnnotationMethodDeclaration(runtime);
         parseFieldDeclaration = new ParseFieldDeclaration(runtime);
+        parseConstructorDeclaration = new ParseConstructorDeclaration(runtime);
     }
 
     public TypeInfo parse(Context context,
@@ -58,11 +60,11 @@ public class ParseTypeDeclaration extends CommonParse {
                 typeNature = tn;
             }
             i++;
-            while(td.get(i) instanceof Delimiter) i++; // @ in @interface
+            while (td.get(i) instanceof Delimiter) i++; // @ in @interface
         }
         if (typeNature == null) throw new UnsupportedOperationException("Have not determined type nature");
         String simpleName;
-        if (td.children().get(i) instanceof Identifier identifier) {
+        if (td.get(i) instanceof Identifier identifier) {
             simpleName = identifier.getSource();
             i++;
         } else throw new UnsupportedOperationException();
@@ -82,14 +84,14 @@ public class ParseTypeDeclaration extends CommonParse {
         builder.setTypeNature(typeNature);
         builder.setSource(source(typeInfo, td));
 
-        if (td.children().get(i) instanceof ExtendsList extendsList) {
+        if (td.get(i) instanceof ExtendsList extendsList) {
             for (Node child : extendsList.children()) {
 
             }
             i++;
         }
 
-        if (td.children().get(i) instanceof ImplementsList implementsList) {
+        if (td.get(i) instanceof ImplementsList implementsList) {
             for (Node child : implementsList.children()) {
 
             }
@@ -99,7 +101,7 @@ public class ParseTypeDeclaration extends CommonParse {
         Context newContext = context.newSubType(typeInfo);
 
 
-        Node body = td.children().get(i);
+        Node body = td.get(i);
         if (body instanceof ClassOrInterfaceBody) {
             List<TypeDeclaration> typeDeclarations = new ArrayList<>();
             List<FieldDeclaration> fieldDeclarations = new ArrayList<>();
@@ -126,6 +128,9 @@ public class ParseTypeDeclaration extends CommonParse {
                 if (child instanceof MethodDeclaration md) {
                     MethodInfo methodInfo = parseMethodDeclaration.parse(newContext, md);
                     builder.addMethod(methodInfo);
+                } else if (child instanceof ConstructorDeclaration cd) {
+                    MethodInfo constructor = parseConstructorDeclaration.parse(newContext, cd);
+                    builder.addConstructor(constructor);
                 }
             }
 
@@ -141,7 +146,7 @@ public class ParseTypeDeclaration extends CommonParse {
                     builder.addMethod(methodInfo);
                 }
             }
-        } else throw new UnsupportedOperationException("node " + td.children().get(i).getClass());
+        } else throw new UnsupportedOperationException("node " + td.get(i).getClass());
 
         // finally we do the fields
 

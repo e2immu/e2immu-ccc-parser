@@ -7,13 +7,16 @@ import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstapi.statement.Block;
+import org.e2immu.cstapi.statement.Statement;
 import org.e2immu.parser.java.ParseBlock;
 import org.e2immu.parser.java.ParseExpression;
+import org.e2immu.parser.java.ParseStatement;
 import org.e2immu.parserapi.Context;
 import org.e2immu.parserapi.Resolver;
 import org.parsers.java.Node;
 import org.parsers.java.ast.CodeBlock;
 import org.parsers.java.ast.Expression;
+import org.parsers.java.ast.ExpressionStatement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,12 +26,16 @@ import java.util.List;
 public class ResolverImpl implements Resolver {
     private static final Logger LOGGER = LoggerFactory.getLogger(ResolverImpl.class);
 
+    private final ParseStatement parseStatement;
     private final ParseExpression parseExpression;
     private final ParseBlock parseBlock;
+    private final Runtime runtime;
 
     public ResolverImpl(Runtime runtime) {
         this.parseExpression = new ParseExpression(runtime);
         this.parseBlock = new ParseBlock(runtime);
+        this.parseStatement = new ParseStatement(runtime);
+        this.runtime = runtime;
     }
 
     record Todo(Info.Builder<?> info, Node expression, Context context) {
@@ -58,18 +65,22 @@ public class ResolverImpl implements Resolver {
                 builder.commit();
             } else if (todo.info instanceof MethodInfo.Builder builder) {
                 Element e;
-                if (todo.expression instanceof CodeBlock codeBlock) {
+                if (todo.expression instanceof ExpressionStatement est) {
+                    e = parseStatement.parse(todo.context, est);
+                } else if (todo.expression instanceof CodeBlock codeBlock) {
                     e = parseBlock.parse(todo.context, codeBlock);
                 } else {
                     e = parseExpression.parse(todo.context, todo.expression);
                 }
                 if (e instanceof Block b) {
                     builder.setMethodBody(b);
-                    builder.commit();
+                } else if(e instanceof Statement s) {
+                    builder.setMethodBody(runtime.newBlockBuilder().addStatement(s).build());
                 } else {
                     // in Java, we must have a block
                     throw new UnsupportedOperationException();
                 }
+                builder.commit();
             } else throw new UnsupportedOperationException("In java, we cannot have expressions in other places");
         }
         for (TypeInfo.Builder builder : types) {
