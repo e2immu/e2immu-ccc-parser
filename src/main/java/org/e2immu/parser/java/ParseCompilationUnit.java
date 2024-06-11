@@ -33,7 +33,7 @@ public class ParseCompilationUnit extends CommonParse {
                 : Objects.requireNonNullElse(packageDeclaration.getName(), "");
         org.e2immu.cstapi.element.CompilationUnit cu = runtime.newCompilationUnitBuilder()
                 .setPackageName(packageName).build();
-        Context newContext = rootContext.newCompilationUnit(typeMap, cu);
+        Context newContext = rootContext.newCompilationUnit(rootContext.resolver(), typeMap, cu);
         List<TypeInfo> types = new ArrayList<>();
         for (Node child : compilationUnit.children()) {
             if (child instanceof TypeDeclaration cd) {

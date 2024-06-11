@@ -30,6 +30,8 @@ public interface Context {
 
     AnonymousTypeCounters anonymousTypeCounters();
 
+    Resolver resolver();
+
     // variable contexts
 
     VariableContext dependentVariableContext();
@@ -40,7 +42,7 @@ public interface Context {
 
     ForwardType typeOfEnclosingSwitchExpression();
 
-    Context newCompilationUnit(TypeMap.Builder typeMap, CompilationUnit compilationUnit);
+    Context newCompilationUnit(Resolver resolver, TypeMap.Builder typeMap, CompilationUnit compilationUnit);
 
     Context newVariableContext(String reason, VariableContext variableContext);
 

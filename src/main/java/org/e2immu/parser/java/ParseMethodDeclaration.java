@@ -13,12 +13,10 @@ import org.parsers.java.Node;
 import org.parsers.java.ast.*;
 
 public class ParseMethodDeclaration extends CommonParse {
-    private final ParseBlock parseBlock;
     private final ParseType parseType;
 
     public ParseMethodDeclaration(Runtime runtime) {
         super(runtime);
-        parseBlock = new ParseBlock(runtime);
         parseType = new ParseType(runtime);
     }
 
@@ -57,8 +55,11 @@ public class ParseMethodDeclaration extends CommonParse {
         if (i < md.children().size() && md.children().get(i) instanceof CodeBlock codeBlock) {
             ForwardTypeImpl forwardType = new ForwardTypeImpl(returnType);
             Context newContext = context.newVariableContextForMethodBlock(methodInfo, forwardType);
-            Block block = parseBlock.parse(newContext, codeBlock);
-            builder.setMethodBody(block);
+            /*
+             delay the parsing of the code-block for a second phase, when all methods are known so that they can
+             be resolved
+             */
+            context.resolver().add(builder, codeBlock, newContext);
         }
         builder.commitParameters();
 

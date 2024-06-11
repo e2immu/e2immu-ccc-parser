@@ -128,12 +128,13 @@ public class ParseTypeDeclaration extends CommonParse {
         } else if (body instanceof AnnotationTypeBody) {
             for (Node child : body.children()) {
                 if (child instanceof AnnotationMethodDeclaration amd) {
-                       MethodInfo methodInfo = parseAnnotationMethodDeclaration.parse(newContext, amd);
-                       builder.addMethod(methodInfo);
+                    MethodInfo methodInfo = parseAnnotationMethodDeclaration.parse(newContext, amd);
+                    builder.addMethod(methodInfo);
                 }
             }
         } else throw new UnsupportedOperationException("node " + td.children().get(i).getClass());
 
+        context.resolver().add(builder);
         return typeInfo;
     }
 }
