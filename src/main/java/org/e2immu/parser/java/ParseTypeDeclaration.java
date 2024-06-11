@@ -2,10 +2,7 @@ package org.e2immu.parser.java;
 
 import org.e2immu.cstapi.element.Comment;
 import org.e2immu.cstapi.element.CompilationUnit;
-import org.e2immu.cstapi.info.Access;
-import org.e2immu.cstapi.info.MethodInfo;
-import org.e2immu.cstapi.info.TypeInfo;
-import org.e2immu.cstapi.info.TypeModifier;
+import org.e2immu.cstapi.info.*;
 import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstapi.type.TypeNature;
 import org.e2immu.cstimpl.info.InspectionImpl;
@@ -19,16 +16,19 @@ import org.parsers.java.Token;
 import org.parsers.java.ast.*;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 public class ParseTypeDeclaration extends CommonParse {
     private final ParseMethodDeclaration parseMethodDeclaration;
     private final ParseAnnotationMethodDeclaration parseAnnotationMethodDeclaration;
+    private final ParseFieldDeclaration parseFieldDeclaration;
 
     public ParseTypeDeclaration(Runtime runtime) {
         super(runtime);
         parseMethodDeclaration = new ParseMethodDeclaration(runtime);
         parseAnnotationMethodDeclaration = new ParseAnnotationMethodDeclaration(runtime);
+        parseFieldDeclaration = new ParseFieldDeclaration(runtime);
     }
 
     public TypeInfo parse(Context context,
@@ -113,17 +113,41 @@ public class ParseTypeDeclaration extends CommonParse {
 
         Context newContext = context.newSubType(typeInfo);
 
+
         Node body = td.children().get(i);
         if (body instanceof ClassOrInterfaceBody) {
+            List<TypeDeclaration> typeDeclarations = new ArrayList<>();
+            List<FieldDeclaration> fieldDeclarations = new ArrayList<>();
+            int countCompactConstructors = 0;
+            int countNormalConstructors = 0;
+
+            for (Node child : body.children()) {
+                if (child instanceof TypeDeclaration cid) typeDeclarations.add(cid);
+                else if (child instanceof CompactConstructorDeclaration) ++countCompactConstructors;
+                else if (child instanceof ConstructorDeclaration) ++countNormalConstructors;
+                else if (child instanceof FieldDeclaration fd) fieldDeclarations.add(fd);
+            }
+
+            // FIRST, do subtypes
+
+            for (TypeDeclaration typeDeclaration : typeDeclarations) {
+                TypeInfo subTypeInfo = parse(newContext, Either.right(typeInfo), typeDeclaration);
+                builder.addSubType(subTypeInfo);
+            }
+
+            // THEN, all sorts of methods and constructors
+
             for (Node child : body.children()) {
                 if (child instanceof MethodDeclaration md) {
                     MethodInfo methodInfo = parseMethodDeclaration.parse(newContext, md);
                     builder.addMethod(methodInfo);
                 }
-                if (child instanceof TypeDeclaration subType) {
-                    TypeInfo subTypeInfo = parse(newContext, Either.right(typeInfo), subType);
-                    builder.addSubType(subTypeInfo);
-                }
+            }
+
+            // FINALLY, do the fields
+            for (FieldDeclaration fieldDeclaration : fieldDeclarations) {
+                FieldInfo field = parseFieldDeclaration.parse(newContext, fieldDeclaration);
+                builder.addField(field);
             }
         } else if (body instanceof AnnotationTypeBody) {
             for (Node child : body.children()) {
@@ -133,6 +157,8 @@ public class ParseTypeDeclaration extends CommonParse {
                 }
             }
         } else throw new UnsupportedOperationException("node " + td.children().get(i).getClass());
+
+        // finally we do the fields
 
         context.resolver().add(builder);
         return typeInfo;
