@@ -13,9 +13,9 @@ import java.util.List;
 public class ParseBlock extends CommonParse {
     private final ParseStatement parseStatement;
 
-    public ParseBlock(Runtime runtime) {
+    public ParseBlock(Runtime runtime, ParseStatement parseStatement) {
         super(runtime);
-        parseStatement = new ParseStatement(runtime);
+        this.parseStatement = parseStatement;
     }
 
     public Block parse(Context context, CodeBlock codeBlock) {

@@ -33,8 +33,8 @@ public class ResolverImpl implements Resolver {
 
     public ResolverImpl(Runtime runtime) {
         this.parseExpression = new ParseExpression(runtime);
-        this.parseBlock = new ParseBlock(runtime);
         this.parseStatement = new ParseStatement(runtime);
+        this.parseBlock = new ParseBlock(runtime, parseStatement);
         this.runtime = runtime;
     }
 

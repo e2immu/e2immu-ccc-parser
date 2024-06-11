@@ -2,10 +2,18 @@ package org.e2immu.parser.java;
 
 import org.e2immu.cstapi.element.Comment;
 import org.e2immu.cstapi.element.Source;
+import org.e2immu.cstapi.expression.Expression;
+import org.e2immu.cstapi.info.FieldInfo;
 import org.e2immu.cstapi.info.Info;
+import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.runtime.Runtime;
+import org.e2immu.cstapi.type.NamedType;
+import org.e2immu.cstapi.variable.FieldReference;
+import org.e2immu.cstapi.variable.Variable;
+import org.e2immu.parserapi.Context;
 import org.parsers.java.Node;
 import org.parsers.java.ast.MultiLineComment;
+import org.parsers.java.ast.Name;
 import org.parsers.java.ast.SingleLineComment;
 
 import java.util.List;
