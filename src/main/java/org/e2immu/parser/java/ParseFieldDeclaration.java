@@ -70,7 +70,7 @@ public class ParseFieldDeclaration extends CommonParse {
 
         fieldModifiers.forEach(builder::addFieldModifier);
         VariableExpression scope = runtime.newVariableExpression(runtime.newThis(fieldInfo.owner()));
-        FieldReference fieldReference = runtime.newFieldReference(fieldInfo, scope);
+        FieldReference fieldReference = runtime.newFieldReference(fieldInfo, scope, fieldInfo.type()); // FIXME generics
         context.variableContext().add(fieldReference);
         if (expression != null) {
             context.resolver().add(fieldInfo.builder(), expression, context);

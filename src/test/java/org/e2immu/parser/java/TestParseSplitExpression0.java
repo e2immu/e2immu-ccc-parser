@@ -1,9 +1,6 @@
 package org.e2immu.parser.java;
 
-import org.e2immu.cstapi.expression.Assignment;
-import org.e2immu.cstapi.expression.Cast;
-import org.e2immu.cstapi.expression.MethodCall;
-import org.e2immu.cstapi.expression.VariableExpression;
+import org.e2immu.cstapi.expression.*;
 import org.e2immu.cstapi.info.FieldInfo;
 import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.info.ParameterInfo;
@@ -112,6 +109,29 @@ public class TestParseSplitExpression0 extends CommonTestParse {
             && cast.expression() instanceof MethodCall mc) {
             assertSame(runtime.intTypeInfo(), cast.parameterizedType().typeInfo());
             assertEquals(2, mc.parameterExpressions().size());
+            if(mc.object() instanceof TypeExpression te) {
+                assertEquals("java.lang.Math", te.parameterizedType().typeInfo().fullyQualifiedName());
+            } else fail();
+        } else fail();
+
+
+        MethodInfo same6 = typeInfo.findUniqueMethod("same6", 1);
+        assertEquals(2, same6.methodBody().statements().size());
+        if (same6.methodBody().statements().get(1) instanceof ReturnStatement rs
+            && rs.expression() instanceof MethodCall mc) {
+            assertEquals(4, mc.parameterExpressions().size());
+            if (mc.parameterExpressions().get(2) instanceof EnclosedExpression ee) {
+                assertEquals("this.j=k+2", ee.inner().toString());
+                if (ee.inner() instanceof Assignment assignment) {
+                    if (assignment.target() instanceof VariableExpression ve) {
+                        assertEquals("j", ve.variable().simpleName());
+                        if (ve.variable() instanceof FieldReference fr) {
+                            assertSame(runtime.intTypeInfo(), fr.parameterizedType().typeInfo());
+                        } else fail();
+                    } else fail();
+                    assertSame(runtime.intTypeInfo(), assignment.parameterizedType().typeInfo());
+                } else fail();
+            }
         } else fail();
     }
 }

@@ -1,8 +1,11 @@
 package org.e2immu.parser.java;
 
 import org.e2immu.cstapi.element.Comment;
+import org.e2immu.cstapi.expression.MethodCall;
+import org.e2immu.cstapi.expression.StringConstant;
 import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.info.TypeInfo;
+import org.e2immu.cstapi.statement.ExpressionAsStatement;
 import org.e2immu.cstimpl.element.SingleLineComment;
 import org.e2immu.cstimpl.element.SourceImpl;
 import org.intellij.lang.annotations.Language;
@@ -50,5 +53,11 @@ public class TestParse101 extends CommonTestParse {
             assertEquals(4, source.beginLine());
             assertEquals(6, source.endLine());
         }
+        if (methodInfo.methodBody().statements().get(0) instanceof ExpressionAsStatement eas
+            && eas.expression() instanceof MethodCall mc) {
+            if (mc.parameterExpressions().get(0) instanceof StringConstant sc) {
+                assertEquals("hello", sc.constant());
+            } else fail();
+        } else fail();
     }
 }

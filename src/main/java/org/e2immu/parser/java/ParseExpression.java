@@ -1,9 +1,7 @@
 package org.e2immu.parser.java;
 
-import org.e2immu.cstapi.expression.Assignment;
-import org.e2immu.cstapi.expression.Cast;
+import org.e2immu.cstapi.expression.*;
 import org.e2immu.cstapi.expression.Expression;
-import org.e2immu.cstapi.expression.VariableExpression;
 import org.e2immu.cstapi.info.FieldInfo;
 import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.runtime.Runtime;
@@ -13,6 +11,7 @@ import org.e2immu.cstapi.variable.Variable;
 import org.e2immu.parserapi.Context;
 import org.parsers.java.Node;
 import org.parsers.java.ast.*;
+import org.parsers.java.ast.MethodCall;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,12 +19,13 @@ import static org.parsers.java.Token.TokenType.*;
 
 public class ParseExpression extends CommonParse {
     private static final Logger LOGGER = LoggerFactory.getLogger(ParseExpression.class);
-
+    private final ParseMethodCall parseMethodCall;
     private final ParseType parseType;
 
     public ParseExpression(Runtime runtime) {
         super(runtime);
         parseType = new ParseType(runtime);
+        parseMethodCall = new ParseMethodCall(runtime, this);
     }
 
     public Expression parse(Context context, Node node) {
@@ -42,7 +42,7 @@ public class ParseExpression extends CommonParse {
             return parseDotName(context, dotName);
         }
         if (node instanceof MethodCall mc) {
-            return parseMethodCall(context, mc);
+            return parseMethodCall.parse(context, mc);
         }
         if (node instanceof LiteralExpression le) {
             return parseLiteral(context, le);
@@ -52,6 +52,9 @@ public class ParseExpression extends CommonParse {
         }
         if (node instanceof AdditiveExpression ae) {
             return parseAdditive(context, ae);
+        }
+        if (node instanceof UnaryExpression ue) {
+            return parseUnaryExpression(context, ue);
         }
         if (node instanceof Name name) {
             String nameAsString = name.getAsString();
@@ -69,7 +72,33 @@ public class ParseExpression extends CommonParse {
         if (node instanceof AssignmentExpression assignmentExpression) {
             return parseAssignment(context, assignmentExpression);
         }
+        if (node instanceof Parentheses p) {
+            return parseParentheses(context, p);
+        }
         throw new UnsupportedOperationException("node " + node.getClass());
+    }
+
+    private Expression parseParentheses(Context context, Parentheses p) {
+        Expression e = parse(context, p.getNestedExpression());
+        return runtime.newEnclosedExpression(e);
+    }
+
+    private Expression parseUnaryExpression(Context context, UnaryExpression ue) {
+        MethodInfo methodInfo;
+        if (ue.get(0) instanceof Operator operator) {
+            methodInfo = switch (operator.getType()) {
+                case PLUS -> null; // ignore!
+                case MINUS -> runtime.minusOperatorInt();
+                case BANG -> runtime.logicalNotOperatorBool();
+                case TILDE -> runtime.bitWiseNotOperatorInt();
+                default -> throw new UnsupportedOperationException();
+            };
+        } else throw new UnsupportedOperationException();
+        Expression expression = parse(context, ue.get(1));
+        if (methodInfo == null) {
+            return expression;
+        }
+        return runtime.newUnaryOperator(methodInfo, expression, runtime.precedenceUNARY());
     }
 
     private VariableExpression parseDotName(Context context, DotName dotName) {
@@ -86,7 +115,7 @@ public class ParseExpression extends CommonParse {
             scope = parse(context, n0);
             throw new UnsupportedOperationException();
         }
-        FieldReference fr = runtime.newFieldReference(fieldInfo, scope);
+        FieldReference fr = runtime.newFieldReference(fieldInfo, scope, fieldInfo.type()); // FIXME generics
         return runtime.newVariableExpression(fr);
     }
 
@@ -164,10 +193,9 @@ public class ParseExpression extends CommonParse {
             }
             return runtime.newChar(c);
         }
+        if(child instanceof StringLiteral sl) {
+            return runtime.newStringConstant(sl.getString());
+        }
         throw new UnsupportedOperationException("literal expression " + le.getClass());
-    }
-
-    private org.e2immu.cstapi.expression.MethodCall parseMethodCall(Context context, MethodCall mc) {
-        return runtime.newMethodCall(null, null, null);
     }
 }

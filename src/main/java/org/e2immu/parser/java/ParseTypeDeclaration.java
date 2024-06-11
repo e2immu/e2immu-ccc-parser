@@ -70,9 +70,9 @@ public class ParseTypeDeclaration extends CommonParse {
         } else throw new UnsupportedOperationException();
         TypeInfo typeInfo;
         if (packageNameOrEnclosing.isLeft()) {
-            typeInfo = new TypeInfoImpl(packageNameOrEnclosing.getLeft(), simpleName);
+            typeInfo = runtime.newTypeInfo(packageNameOrEnclosing.getLeft(), simpleName);
         } else {
-            typeInfo = new TypeInfoImpl(packageNameOrEnclosing.getRight(), simpleName);
+            typeInfo = runtime.newTypeInfo(packageNameOrEnclosing.getRight(), simpleName);
         }
         TypeInfo.Builder builder = typeInfo.builder();
         builder.addComments(comments);

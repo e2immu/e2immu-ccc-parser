@@ -246,12 +246,12 @@ public class TypeContextImpl implements TypeContext {
                     .filter(FieldInfo::isStatic)
                     .filter(f -> f.name().equals(memberName))
                     .findFirst()
-                    .ifPresent(fieldInfo -> map.put(memberName, runtime.newFieldReference(fieldInfo, null)));
+                    .ifPresent(fieldInfo -> map.put(memberName, runtime.newFieldReference(fieldInfo)));
         }
         for (TypeInfo typeInfo : importMap.staticAsterisk()) {
             typeInfo.fields().stream()
                     .filter(FieldInfo::isStatic)
-                    .forEach(fieldInfo -> map.put(fieldInfo.name(), runtime.newFieldReference(fieldInfo, null)));
+                    .forEach(fieldInfo -> map.put(fieldInfo.name(), runtime.newFieldReference(fieldInfo)));
         }
         return map;
     }
