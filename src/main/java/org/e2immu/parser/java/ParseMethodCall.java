@@ -2,11 +2,14 @@ package org.e2immu.parser.java;
 
 import org.e2immu.cstapi.expression.Expression;
 import org.e2immu.cstapi.expression.MethodCall;
+import org.e2immu.cstapi.info.FieldInfo;
 import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstapi.type.NamedType;
 import org.e2immu.cstapi.type.ParameterizedType;
+import org.e2immu.cstapi.variable.FieldReference;
+import org.e2immu.cstapi.variable.Variable;
 import org.e2immu.parserapi.Context;
 import org.parsers.java.ast.Identifier;
 import org.parsers.java.ast.InvocationArguments;
@@ -29,19 +32,12 @@ public class ParseMethodCall extends CommonParse {
 
     public MethodCall parse(Context context, org.parsers.java.ast.MethodCall mc) {
         MethodCall.Builder builder = runtime.newMethodCallBuilder();
-        Expression object = runtime.newVariableExpression(runtime.newThis(context.enclosingType()));
-
+        Expression object;
         int i = 0;
         String methodName;
         if (mc.get(i) instanceof Name name) {
             // TypeExpression?
-            if (name.size() > 1 && name.get(0) instanceof Identifier id) {
-                String typeName = id.getSource();
-                NamedType nt = context.typeContext().get(typeName, false);
-                if (nt instanceof TypeInfo ti) {
-                    object = runtime.newTypeExpression(ti.asSimpleParameterizedType(), runtime.diamondNO());
-                }
-            }
+            object = parseScope(context, name, name.size() - 2);
             // name and possibly scope: System.out.println id, del, id, del, id
             int nameIndex = name.size() - 1;
             if (name.get(nameIndex) instanceof Identifier nameId) {
@@ -81,4 +77,48 @@ public class ParseMethodCall extends CommonParse {
                 .addComments(comments(mc))
                 .build();
     }
+
+    /*
+    Type
+    a.b.c.Type
+    field
+    Type.field
+    object.field
+    a.b.c.Type.field
+    o1.o2.field
+     */
+    private Expression parseScope(Context context, Name name, int maxIndex) {
+        if (maxIndex < 0) {
+            return runtime.newVariableExpression(runtime.newThis(context.enclosingType()));
+        }
+        // field without scope, local variable, packagePrefix
+        String name0 = name.get(0).getSource();
+        Expression expression;
+        Variable singleName = context.variableContext().get(name0, false);
+        if (singleName != null) {
+            expression = runtime.newVariableExpression(singleName);
+        } else {
+            NamedType namedType = context.typeContext().get(name0, false);
+            if (namedType instanceof TypeInfo typeInfo) {
+                expression = runtime.newTypeExpression(typeInfo.asSimpleParameterizedType(), runtime.diamondNO());
+            } else {
+                // FIXME could be a package prefix
+                throw new UnsupportedOperationException();
+            }
+        }
+        if (maxIndex <= 1) {
+            return expression;
+        }
+        // the next ones must be fields
+        Expression scope = expression;
+        for (int i = 2; i < maxIndex; i += 2) {
+            TypeInfo typeInfo = scope.parameterizedType().typeInfo();
+            String nameI = name.get(i).getSource();
+            FieldInfo fieldInfo = typeInfo.getFieldByName(nameI, true);
+            FieldReference fr = runtime.newFieldReference(fieldInfo, scope, fieldInfo.type());
+            scope = runtime.newVariableExpression(fr);
+        }
+        return scope;
+    }
 }
+

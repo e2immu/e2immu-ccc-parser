@@ -79,6 +79,7 @@ public class CommonTestParse {
 
         MethodInfo println = runtime.newMethod(printStream, "println", runtime.newMethodTypeMethod());
         println.builder().addParameter("string", runtime.stringParameterizedType());
+        println.builder().setReturnType(runtime.voidParameterizedType());
         println.builder().commit();
         printStream.builder().addMethod(println);
         printStream.builder().commit();
