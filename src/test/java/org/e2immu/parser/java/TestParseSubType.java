@@ -48,12 +48,14 @@ public class TestParseSubType extends CommonTestParse {
         assertEquals(1, subType1.methods().size());
         MethodInfo i = subType1.methods().get(0);
         assertEquals("i", i.name());
-        assertNull(i.methodBody());
+        assertTrue(i.methodBody().isEmpty());
 
         TypeInfo subType2 = typeInfo.subTypes().get(1);
+        assertEquals("a.b.C.II", subType2.fullyQualifiedName());
         assertTrue(subType2.typeNature().isClass());
         assertTrue(subType2.isStatic());
         assertFalse(subType2.isPublic());
+        assertTrue(subType2.isPrivate());
         assertEquals(1, subType2.methods().size());
         MethodInfo i2 = subType2.methods().get(0);
         assertEquals("i", i.name());

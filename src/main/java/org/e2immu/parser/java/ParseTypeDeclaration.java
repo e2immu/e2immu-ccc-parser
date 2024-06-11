@@ -37,30 +37,28 @@ public class ParseTypeDeclaration extends CommonParse {
                           TypeDeclaration td) {
         List<Comment> comments = comments(td);
 
-        TypeNature typeNature = null;
         int i = 0;
+        TypeNature typeNature = null;
         List<TypeModifier> typeModifiers = new ArrayList<>();
-        while (!(td.children().get(i) instanceof Identifier)) {
-            if (td.children().get(i) instanceof KeyWord keyWord) {
-                Token.TokenType tt = keyWord.getType();
-                TypeModifier typeModifier = getTypeModifier(tt);
-                if (typeModifier != null) {
-                    typeModifiers.add(typeModifier);
-                }
-                TypeNature tn = switch (tt) {
-                    case CLASS -> runtime.newTypeNatureClass();
-                    case INTERFACE -> td instanceof AnnotationTypeDeclaration
-                            ? runtime.newTypeNatureAnnotation() : runtime.newTypeNatureInterface();
-                    case ENUM -> runtime.newTypeNatureEnum();
-                    case RECORD -> runtime.newTypeNatureRecord();
-                    default -> null;
-                };
-                if (tn != null) {
-                    assert typeNature == null;
-                    typeNature = tn;
+        if (td.get(i) instanceof Modifiers modifiers) {
+            for (Node node : modifiers.children()) {
+                if (node instanceof KeyWord keyWord) {
+                    typeModifiers.add(getTypeModifier(keyWord.getType()));
                 }
             }
             i++;
+        }
+        while (td.get(i) instanceof Delimiter) i++; // @ in @interface
+        while (td.get(i) instanceof KeyWord keyWord) {
+            TypeModifier tm = getTypeModifier(keyWord.getType());
+            if (tm != null) typeModifiers.add(tm);
+            TypeNature tn = getTypeNature(td, keyWord.getType());
+            if (tn != null) {
+                assert typeNature == null;
+                typeNature = tn;
+            }
+            i++;
+            while(td.get(i) instanceof Delimiter) i++; // @ in @interface
         }
         if (typeNature == null) throw new UnsupportedOperationException("Have not determined type nature");
         String simpleName;
@@ -149,6 +147,17 @@ public class ParseTypeDeclaration extends CommonParse {
 
         context.resolver().add(builder);
         return typeInfo;
+    }
+
+    private TypeNature getTypeNature(TypeDeclaration td, Token.TokenType tt) {
+        return switch (tt) {
+            case CLASS -> runtime.newTypeNatureClass();
+            case INTERFACE -> td instanceof AnnotationTypeDeclaration
+                    ? runtime.newTypeNatureAnnotation() : runtime.newTypeNatureInterface();
+            case ENUM -> runtime.newTypeNatureEnum();
+            case RECORD -> runtime.newTypeNatureRecord();
+            default -> null;
+        };
     }
 
     private Access access(List<TypeModifier> typeModifiers) {
