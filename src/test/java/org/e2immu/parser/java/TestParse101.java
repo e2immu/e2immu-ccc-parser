@@ -4,6 +4,7 @@ import org.e2immu.cstapi.element.Comment;
 import org.e2immu.cstapi.expression.MethodCall;
 import org.e2immu.cstapi.expression.StringConstant;
 import org.e2immu.cstapi.info.MethodInfo;
+import org.e2immu.cstapi.info.ParameterInfo;
 import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.statement.ExpressionAsStatement;
 import org.e2immu.cstimpl.element.SingleLineComment;
@@ -53,6 +54,13 @@ public class TestParse101 extends CommonTestParse {
             assertEquals(4, source.beginLine());
             assertEquals(6, source.endLine());
         }
+        assertEquals(1, methodInfo.parameters().size());
+        ParameterInfo pi = methodInfo.parameters().get(0);
+        assertEquals("args", pi.name());
+        assertEquals(0, pi.index());
+        assertEquals("String[]", pi.parameterizedType().fullyQualifiedName());
+        assertEquals(1, pi.parameterizedType().arrays());
+
         if (methodInfo.methodBody().statements().get(0) instanceof ExpressionAsStatement eas
             && eas.expression() instanceof MethodCall mc) {
             if (mc.parameterExpressions().get(0) instanceof StringConstant sc) {

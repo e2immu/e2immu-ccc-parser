@@ -21,6 +21,7 @@ public class CommonTestParse {
     protected final Runtime runtime = new RuntimeImpl();
     protected final TypeInfo math;
     protected final TypeInfo system;
+    protected final TypeInfo exception;
     protected final TypeInfo printStream;
 
     class TypeMapBuilder implements TypeMap.Builder {
@@ -42,17 +43,14 @@ public class CommonTestParse {
 
         @Override
         public TypeInfo get(String fullyQualifiedName) {
-            if ("java.lang.String".equals(fullyQualifiedName)) return runtime.stringTypeInfo();
-            if ("java.lang.System".equals(fullyQualifiedName)) {
-                return system;
-            }
-            if ("java.lang.Math".equals(fullyQualifiedName)) {
-                return math;
-            }
-            if ("java.io.PrintStream".equals(fullyQualifiedName)) {
-                return printStream;
-            }
-            throw new UnsupportedOperationException();
+            return switch (fullyQualifiedName) {
+                case "java.lang.String" -> runtime.stringTypeInfo();
+                case "java.lang.System" -> system;
+                case "java.lang.Math" -> math;
+                case "java.lang.Exception" -> exception;
+                case "java.io.PrintStream" -> printStream;
+                default -> throw new UnsupportedOperationException("Type " + fullyQualifiedName);
+            };
         }
 
         @Override
@@ -68,6 +66,7 @@ public class CommonTestParse {
         math = runtime.newTypeInfo(javaLang, "Math");
         printStream = runtime.newTypeInfo(javaIo, "PrintStream");
         system = runtime.newTypeInfo(javaLang, "System");
+        exception = runtime.newTypeInfo(javaLang, "Exception");
 
         MethodInfo pow = runtime.newMethod(math, "pow", runtime.newMethodTypeStaticMethod());
         pow.builder().addParameter("base", runtime.doubleParameterizedType());

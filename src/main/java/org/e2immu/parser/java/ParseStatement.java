@@ -117,6 +117,49 @@ public class ParseStatement extends CommonParse {
                     .addComments(comments).setSource(source)
                     .build();
         }
+        if (statement instanceof TryStatement tryStatement) {
+            int i = 1;
+            if (tryStatement.get(i) instanceof Delimiter) {
+                // resources
+                i += 2;
+            }
+            Context newContext = context.newVariableContext("tryBlock");
+            Block block = parseBlockOrStatement(newContext, index + FIRST_BLOCK, tryStatement.get(i));
+            i++;
+            org.e2immu.cstapi.statement.TryStatement.Builder builder = runtime.newTryBuilder()
+                    .setBlock(block)
+                    .addComments(comments).setSource(source);
+            int blockCount = 1;
+            while (tryStatement.get(i) instanceof CatchBlock catchBlock) {
+                Context catchContext = context.newVariableContext("catchBlock" + blockCount);
+                org.e2immu.cstapi.statement.TryStatement.CatchClause.Builder ccBuilder = runtime.newCatchClauseBuilder();
+                int j = 2;
+                if (catchBlock.get(j) instanceof Type type) {
+                    ParameterizedType pt = parseType.parse(context, type);
+                    ccBuilder.addType(pt);
+                    j++;
+                } else throw new UnsupportedOperationException();
+                if (catchBlock.get(j) instanceof Identifier identifier) {
+                    ccBuilder.setVariableName(identifier.getSource());
+                    j++;
+                }
+                j++; // ) delimiter
+                if (catchBlock.get(j) instanceof CodeBlock cb) {
+                    Block cbb = parseBlock.parse(catchContext, index + "." + blockCount, cb);
+                    blockCount++;
+                    builder.addCatchClause(ccBuilder.setBlock(cbb).build());
+                } else throw new UnsupportedOperationException();
+                i++;
+            }
+            Block finallyBlock;
+            if (tryStatement.get(i) instanceof FinallyBlock fb) {
+                Context finallyContext = context.newVariableContext("finallyBlock");
+                finallyBlock = parseBlockOrStatement(finallyContext, index + "." + blockCount, fb.get(1));
+            } else {
+                finallyBlock = runtime.emptyBlock();
+            }
+            return builder.setFinallyBlock(finallyBlock).build();
+        }
         throw new UnsupportedOperationException("Node " + statement.getClass());
     }
 

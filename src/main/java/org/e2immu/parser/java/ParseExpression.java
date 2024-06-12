@@ -85,6 +85,14 @@ public class ParseExpression extends CommonParse {
         if (node instanceof AssignmentExpression assignmentExpression) {
             return parseAssignment(context, index, assignmentExpression);
         }
+        if (node instanceof ArrayAccess arrayAccess) {
+            assert arrayAccess.size() == 4 : "Not implemented";
+            Expression ae = parse(context, index, arrayAccess.get(0));
+            Expression ie = parse(context, index, arrayAccess.get(2));
+            Variable variable = runtime.newDependentVariable(ae, ie);
+            return runtime.newVariableExpressionBuilder().addComments(comments).setSource(source)
+                    .setVariable(variable).build();
+        }
         if (node instanceof Parentheses p) {
             return parseParentheses(context, index, p);
         }
