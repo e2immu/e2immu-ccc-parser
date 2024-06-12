@@ -26,7 +26,7 @@ public class ParseBlock extends CommonParse {
         int count = 0;
         for (Node child : codeBlock.children()) {
             if (child instanceof Statement s) {
-                String sIndex = index + "." + count;
+                String sIndex = (index.isEmpty() ? "" : index + ".") + count;
                 org.e2immu.cstapi.statement.Statement statement = parseStatement.parse(context, sIndex, s);
                 builder.addStatement(statement);
                 count++;

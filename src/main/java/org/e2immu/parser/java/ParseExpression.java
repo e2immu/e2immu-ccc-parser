@@ -63,6 +63,9 @@ public class ParseExpression extends CommonParse {
         if (node instanceof RelationalExpression re) {
             return parseRelational(context, index, re);
         }
+        if (node instanceof EqualityExpression eq) {
+            return parseEquality(context, index, eq);
+        }
         if (node instanceof UnaryExpression ue) {
             return parseUnaryExpression(context, index, ue);
         }
@@ -158,7 +161,15 @@ public class ParseExpression extends CommonParse {
         } else {
             throw new UnsupportedOperationException();
         }
-        return runtime.newBinaryOperator(lhs, operator, rhs, runtime.precedenceAdditive());
+        ParameterizedType pt = runtime.widestType(lhs.parameterizedType(), rhs.parameterizedType());
+        return runtime.newBinaryOperatorBuilder()
+                .setOperator(operator)
+                .setLhs(lhs).setRhs(rhs)
+                .setParameterizedType(pt)
+                .setPrecedence(runtime.precedenceAdditive())
+                .setSource(source(context.info(), index, ae))
+                .addComments(comments(ae))
+                .build();
     }
 
     private Expression parseMultiplicative(Context context, String index, MultiplicativeExpression me) {
@@ -175,29 +186,62 @@ public class ParseExpression extends CommonParse {
         } else {
             throw new UnsupportedOperationException();
         }
-        return runtime.newBinaryOperator(lhs, operator, rhs, runtime.precedenceMultiplicative());
+        ParameterizedType pt = runtime.widestType(lhs.parameterizedType(), rhs.parameterizedType());
+        return runtime.newBinaryOperatorBuilder()
+                .setOperator(operator)
+                .setLhs(lhs).setRhs(rhs)
+                .setParameterizedType(pt)
+                .setPrecedence(runtime.precedenceMultiplicative())
+                .setSource(source(context.info(), index, me))
+                .addComments(comments(me))
+                .build();
     }
 
     private Expression parseRelational(Context context, String index, RelationalExpression re) {
         Expression lhs = parse(context, index, re.get(0));
         Expression rhs = parse(context, index, re.get(2));
         Node.NodeType token = re.get(1).getType();
+        MethodInfo operator;
         if (token.equals(LE)) {
-            return runtime.less(lhs, rhs, true);
+            operator = runtime.lessEqualsOperatorInt();
+        } else if (token.equals(LT)) {
+            operator = runtime.lessOperatorInt();
+        } else if (token.equals(GE)) {
+            operator = runtime.greaterEqualsOperatorInt();
+        } else if (token.equals(GT)) {
+            operator = runtime.greaterOperatorInt();
+        } else {
+            throw new UnsupportedOperationException();
         }
-        if (token.equals(LT)) {
-            return runtime.less(lhs, rhs, false);
-        }
-        if (token.equals(GE)) {
-            return runtime.greater(lhs, rhs, true);
-        }
-        if (token.equals(GT)) {
-            return runtime.greater(lhs, rhs, false);
-        }
+        return runtime.newBinaryOperatorBuilder()
+                .setOperator(operator)
+                .setLhs(lhs).setRhs(rhs)
+                .setParameterizedType(runtime.booleanParameterizedType())
+                .setPrecedence(runtime.precedenceMultiplicative())
+                .setSource(source(context.info(), index, re))
+                .addComments(comments(re))
+                .build();
+    }
+
+    private Expression parseEquality(Context context, String index, EqualityExpression eq) {
+        Expression lhs = parse(context, index, eq.get(0));
+        Expression rhs = parse(context, index, eq.get(2));
+        Node.NodeType token = eq.get(1).getType();
+        MethodInfo operator;
+        boolean isNumeric = lhs.isNumeric();
         if (token.equals(EQ)) {
-            return runtime.equals(lhs, rhs);
-        }
-        throw new UnsupportedOperationException("Token " + token);
+            operator = isNumeric ? runtime.equalsOperatorInt() : runtime.equalsOperatorObject();
+        } else if (token.equals(NE)) {
+            operator = isNumeric ? runtime.notEqualsOperatorInt() : runtime.notEqualsOperatorObject();
+        } else throw new UnsupportedOperationException();
+        return runtime.newBinaryOperatorBuilder()
+                .setOperator(operator)
+                .setLhs(lhs).setRhs(rhs)
+                .setParameterizedType(runtime.booleanParameterizedType())
+                .setPrecedence(runtime.precedenceMultiplicative())
+                .setSource(source(context.info(), index, eq))
+                .addComments(comments(eq))
+                .build();
     }
 
     private Expression parseLiteral(Context context, LiteralExpression le) {

@@ -9,6 +9,8 @@ import org.e2immu.cstapi.statement.LocalVariableCreation;
 import org.e2immu.cstapi.type.ParameterizedType;
 import org.e2immu.cstapi.variable.LocalVariable;
 import org.e2immu.parserapi.Context;
+import org.parsers.java.Node;
+import org.parsers.java.Token;
 import org.parsers.java.ast.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +26,8 @@ public class ParseStatement extends CommonParse {
     private final ParseType parseType;
 
     private static final String FIRST_BLOCK = ".0";
+    private static final String FIRST_STATEMENT = ".0";
+    private static final String SECOND_BLOCK = ".1";
 
     public ParseStatement(Runtime runtime) {
         super(runtime);
@@ -48,12 +52,13 @@ public class ParseStatement extends CommonParse {
         if (statement instanceof ExpressionStatement es) {
             StatementExpression se = (StatementExpression) es.children().get(0);
             Expression e = parseExpression.parse(context, index, se.get(0));
-            return runtime.newExpressionAsStatement(e);
+            return runtime.newExpressionAsStatementBuilder().setExpression(e).setSource(source)
+                    .addComments(comments).build();
         }
         if (statement instanceof ReturnStatement rs) {
             org.e2immu.cstapi.expression.Expression e = parseExpression.parse(context, index, rs.get(1));
             assert e != null;
-            return runtime.newReturnStatementBuilder()
+            return runtime.newReturnBuilder()
                     .setExpression(e).setSource(source).addComments(comments)
                     .build();
         }
@@ -81,22 +86,48 @@ public class ParseStatement extends CommonParse {
             if (enhancedFor.get(2) instanceof NoVarDeclaration nvd) {
                 loopVariableCreation = (LocalVariableCreation) parse(newContext, index, nvd);
             } else throw new UnsupportedOperationException();
-            Block block;
-            if (enhancedFor.get(6) instanceof CodeBlock codeBlock) {
-                block = parseBlock.parse(newContext, index + FIRST_BLOCK, codeBlock);
-            } else throw new UnsupportedOperationException();
+            Node n6 = enhancedFor.get(6);
+            Block block = parseBlockOrStatement(newContext, index + FIRST_BLOCK, n6);
             return runtime.newForEachBuilder().setInitializer(loopVariableCreation)
                     .setBlock(block).setExpression(expression).build();
         }
         if (statement instanceof WhileStatement whileStatement) {
+            Context newContext = context.newVariableContext("while");
             Expression expression = parseExpression.parse(context, index, whileStatement.get(2));
-            Block block;
-            if (whileStatement.get(4) instanceof CodeBlock codeBlock) {
-                block = parseBlock.parse(context, index + FIRST_BLOCK, codeBlock);
-            } else throw new UnsupportedOperationException();
-            return runtime.newWhileStatementBuilder().setExpression(expression).setBlock(block)
+            Block block = parseBlockOrStatement(newContext, index + FIRST_BLOCK, whileStatement.get(4));
+            return runtime.newWhileBuilder().setExpression(expression).setBlock(block)
                     .setSource(source).addComments(comments).build();
         }
+        if (statement instanceof IfStatement ifStatement) {
+            Expression expression = parseExpression.parse(context, index, ifStatement.get(2));
+            Node n4 = ifStatement.get(4);
+            Context newContext = context.newVariableContext("ifBlock");
+            Block block = parseBlockOrStatement(newContext, index + FIRST_BLOCK, n4);
+            Block elseBlock;
+            if (ifStatement.size() > 5 && ifStatement.get(5) instanceof KeyWord) {
+                assert Token.TokenType.ELSE.equals(ifStatement.get(5).getType());
+                Node n6 = ifStatement.get(6);
+                Context newContext2 = context.newVariableContext("elseBlock");
+                elseBlock = parseBlockOrStatement(newContext2, index + SECOND_BLOCK, n6);
+            } else {
+                elseBlock = runtime.emptyBlock();
+            }
+            return runtime.newIfElseBuilder()
+                    .setExpression(expression).setIfBlock(block).setElseBlock(elseBlock)
+                    .addComments(comments).setSource(source)
+                    .build();
+        }
         throw new UnsupportedOperationException("Node " + statement.getClass());
+    }
+
+    private Block parseBlockOrStatement(Context context, String index, Node node) {
+        if (node instanceof CodeBlock codeBlock) {
+            return parseBlock.parse(context, index, codeBlock);
+        }
+        if (node instanceof Statement s) {
+            org.e2immu.cstapi.statement.Statement st = parse(context, index + FIRST_STATEMENT, s);
+            return runtime.newBlockBuilder().addStatement(st).build();
+        }
+        throw new UnsupportedOperationException();
     }
 }
