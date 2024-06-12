@@ -7,7 +7,6 @@ import org.e2immu.cstapi.info.ParameterInfo;
 import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstapi.type.ParameterizedType;
 import org.e2immu.parserapi.Context;
-import org.e2immu.parserimpl.ForwardTypeImpl;
 import org.parsers.java.Node;
 import org.parsers.java.ast.*;
 
@@ -41,7 +40,7 @@ public class ParseConstructorDeclaration extends CommonParse {
         ParameterizedType returnType;
         if (cd.get(i) instanceof Identifier) {
             methodType = runtime.newMethodTypeConstructor();
-            returnType = runtime.parameterizedTypeRETURN_TYPE_OF_CONSTRUCTOR();
+            returnType = runtime.parameterizedTypeReturnTypeOfConstructor();
         } else throw new UnsupportedOperationException();
         String name;
         if (cd.get(i) instanceof Identifier identifier) {
@@ -50,7 +49,7 @@ public class ParseConstructorDeclaration extends CommonParse {
         } else throw new UnsupportedOperationException();
         MethodInfo methodInfo = runtime.newMethod(context.enclosingType(), name, methodType);
         MethodInfo.Builder builder = methodInfo.builder()
-                .setReturnType(runtime.parameterizedTypeRETURN_TYPE_OF_CONSTRUCTOR());
+                .setReturnType(runtime.parameterizedTypeReturnTypeOfConstructor());
         if (cd.get(i) instanceof FormalParameters fps) {
             for (Node child : fps.children()) {
                 if (child instanceof FormalParameter fp) {
@@ -101,23 +100,23 @@ public class ParseConstructorDeclaration extends CommonParse {
 
     private Access access(List<MethodModifier> methodModifiers) {
         for (MethodModifier methodModifier : methodModifiers) {
-            if (methodModifier.isPublic()) return runtime.newAccessPublic();
-            if (methodModifier.isPrivate()) return runtime.newAccessPrivate();
-            if (methodModifier.isProtected()) return runtime.newAccessProtected();
+            if (methodModifier.isPublic()) return runtime.accessPublic();
+            if (methodModifier.isPrivate()) return runtime.accessPrivate();
+            if (methodModifier.isProtected()) return runtime.accessProtected();
         }
-        return runtime.newAccessPackage();
+        return runtime.accessPackage();
     }
 
     private MethodModifier modifier(KeyWord keyWord) {
         return switch (keyWord.getType()) {
-            case FINAL -> runtime.newMethodModifierFinal();
-            case PRIVATE -> runtime.newMethodModifierPrivate();
-            case PROTECTED -> runtime.newMethodModifierProtected();
-            case PUBLIC -> runtime.newMethodModifierPublic();
-            case STATIC -> runtime.newMethodModifierStatic();
-            case SYNCHRONIZED -> runtime.newMethodModifierSynchronized();
-            case ABSTRACT -> runtime.newMethodModifierAbstract();
-            case _DEFAULT -> runtime.newMethodModifierDefault();
+            case FINAL -> runtime.methodModifierFinal();
+            case PRIVATE -> runtime.methodModifierPrivate();
+            case PROTECTED -> runtime.methodModifierProtected();
+            case PUBLIC -> runtime.methodModifierPublic();
+            case STATIC -> runtime.methodModifierStatic();
+            case SYNCHRONIZED -> runtime.methodModifierSynchronized();
+            case ABSTRACT -> runtime.methodModifierAbstract();
+            case _DEFAULT -> runtime.methodModifierDefault();
             default -> throw new UnsupportedOperationException("Have " + keyWord.getType());
         };
     }

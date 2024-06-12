@@ -5,19 +5,13 @@ import org.e2immu.cstapi.element.CompilationUnit;
 import org.e2immu.cstapi.info.*;
 import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstapi.type.TypeNature;
-import org.e2immu.cstimpl.info.InspectionImpl;
-import org.e2immu.cstimpl.info.TypeInfoImpl;
-import org.e2immu.cstimpl.info.TypeModifierEnum;
-import org.e2immu.cstimpl.info.TypeNatureEnum;
 import org.e2immu.parserapi.Context;
 import org.e2immu.support.Either;
-import org.jetbrains.annotations.Nullable;
 import org.parsers.java.Node;
 import org.parsers.java.Token;
 import org.parsers.java.ast.*;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 public class ParseTypeDeclaration extends CommonParse {
@@ -156,34 +150,34 @@ public class ParseTypeDeclaration extends CommonParse {
 
     private TypeNature getTypeNature(TypeDeclaration td, Token.TokenType tt) {
         return switch (tt) {
-            case CLASS -> runtime.newTypeNatureClass();
+            case CLASS -> runtime.typeNatureClass();
             case INTERFACE -> td instanceof AnnotationTypeDeclaration
-                    ? runtime.newTypeNatureAnnotation() : runtime.newTypeNatureInterface();
-            case ENUM -> runtime.newTypeNatureEnum();
-            case RECORD -> runtime.newTypeNatureRecord();
+                    ? runtime.typeNatureAnnotation() : runtime.typeNatureInterface();
+            case ENUM -> runtime.typeNatureEnum();
+            case RECORD -> runtime.typeNatureRecord();
             default -> null;
         };
     }
 
     private Access access(List<TypeModifier> typeModifiers) {
         for (TypeModifier typeModifier : typeModifiers) {
-            if (typeModifier.isPublic()) return runtime.newAccessPublic();
-            if (typeModifier.isPrivate()) return runtime.newAccessPrivate();
-            if (typeModifier.isProtected()) return runtime.newAccessProtected();
+            if (typeModifier.isPublic()) return runtime.accessPublic();
+            if (typeModifier.isPrivate()) return runtime.accessPrivate();
+            if (typeModifier.isProtected()) return runtime.accessProtected();
         }
-        return runtime.newAccessPackage();
+        return runtime.accessPackage();
     }
 
     private TypeModifier getTypeModifier(Token.TokenType tt) {
         return switch (tt) {
-            case PUBLIC -> runtime.newTypeModifierPublic();
-            case PRIVATE -> runtime.newTypeModifierPrivate();
-            case PROTECTED -> runtime.newTypeModifierProtected();
-            case FINAL -> runtime.newTypeModifierFinal();
-            case SEALED -> runtime.newTypeModifierSealed();
-            case ABSTRACT -> runtime.newTypeModifierAbstract();
-            case NON_SEALED -> runtime.newTypeModifierNonSealed();
-            case STATIC -> runtime.newTypeModifierStatic();
+            case PUBLIC -> runtime.typeModifierPublic();
+            case PRIVATE -> runtime.typeModifierPrivate();
+            case PROTECTED -> runtime.typeModifierProtected();
+            case FINAL -> runtime.typeModifierFinal();
+            case SEALED -> runtime.typeModifierSealed();
+            case ABSTRACT -> runtime.typeModifierAbstract();
+            case NON_SEALED -> runtime.typeModifierNonSealed();
+            case STATIC -> runtime.typeModifierStatic();
             default -> null;
         };
     }

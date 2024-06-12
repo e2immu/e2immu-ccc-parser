@@ -2,10 +2,7 @@ package org.e2immu.parser.java;
 
 import org.e2immu.cstapi.info.*;
 import org.e2immu.cstapi.runtime.Runtime;
-import org.e2immu.cstapi.statement.Block;
 import org.e2immu.cstapi.type.ParameterizedType;
-import org.e2immu.cstimpl.info.MethodInfoImpl;
-import org.e2immu.cstimpl.type.ParameterizedTypeImpl;
 import org.e2immu.parserapi.Context;
 import org.e2immu.parserimpl.ForwardTypeImpl;
 import org.parsers.java.Node;
@@ -104,23 +101,23 @@ public class ParseMethodDeclaration extends CommonParse {
 
     private Access access(List<MethodModifier> methodModifiers) {
         for (MethodModifier methodModifier : methodModifiers) {
-            if (methodModifier.isPublic()) return runtime.newAccessPublic();
-            if (methodModifier.isPrivate()) return runtime.newAccessPrivate();
-            if (methodModifier.isProtected()) return runtime.newAccessProtected();
+            if (methodModifier.isPublic()) return runtime.accessPublic();
+            if (methodModifier.isPrivate()) return runtime.accessPrivate();
+            if (methodModifier.isProtected()) return runtime.accessProtected();
         }
-        return runtime.newAccessPackage();
+        return runtime.accessPackage();
     }
 
     private MethodModifier modifier(KeyWord keyWord) {
         return switch (keyWord.getType()) {
-            case FINAL -> runtime.newMethodModifierFinal();
-            case PRIVATE -> runtime.newMethodModifierPrivate();
-            case PROTECTED -> runtime.newMethodModifierProtected();
-            case PUBLIC -> runtime.newMethodModifierPublic();
-            case STATIC -> runtime.newMethodModifierStatic();
-            case SYNCHRONIZED -> runtime.newMethodModifierSynchronized();
-            case ABSTRACT -> runtime.newMethodModifierAbstract();
-            case _DEFAULT -> runtime.newMethodModifierDefault();
+            case FINAL -> runtime.methodModifierFinal();
+            case PRIVATE -> runtime.methodModifierPrivate();
+            case PROTECTED -> runtime.methodModifierProtected();
+            case PUBLIC -> runtime.methodModifierPublic();
+            case STATIC -> runtime.methodModifierStatic();
+            case SYNCHRONIZED -> runtime.methodModifierSynchronized();
+            case ABSTRACT -> runtime.methodModifierAbstract();
+            case _DEFAULT -> runtime.methodModifierDefault();
             default -> throw new UnsupportedOperationException("Have " + keyWord.getType());
         };
     }

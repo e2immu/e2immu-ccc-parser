@@ -108,7 +108,7 @@ public class ParseExpression extends CommonParse {
         if (methodInfo == null) {
             return expression;
         }
-        return runtime.newUnaryOperator(methodInfo, expression, runtime.precedenceUNARY());
+        return runtime.newUnaryOperator(methodInfo, expression, runtime.precedenceUnary());
     }
 
     private VariableExpression parseDotName(Context context, String index, DotName dotName) {
@@ -158,7 +158,7 @@ public class ParseExpression extends CommonParse {
         } else {
             throw new UnsupportedOperationException();
         }
-        return runtime.newBinaryOperator(lhs, operator, rhs, runtime.precedenceADDITIVE());
+        return runtime.newBinaryOperator(lhs, operator, rhs, runtime.precedenceAdditive());
     }
 
     private Expression parseMultiplicative(Context context, String index, MultiplicativeExpression me) {
@@ -175,7 +175,7 @@ public class ParseExpression extends CommonParse {
         } else {
             throw new UnsupportedOperationException();
         }
-        return runtime.newBinaryOperator(lhs, operator, rhs, runtime.precedenceMULTIPLICATIVE());
+        return runtime.newBinaryOperator(lhs, operator, rhs, runtime.precedenceMultiplicative());
     }
 
     private Expression parseRelational(Context context, String index, RelationalExpression re) {
@@ -206,7 +206,7 @@ public class ParseExpression extends CommonParse {
             return runtime.newInt(il.getValue());
         }
         if (child instanceof BooleanLiteral bl) {
-            return runtime.newBooleanConstant("true".equals(bl.getSource()));
+            return runtime.newBoolean("true".equals(bl.getSource()));
         }
         if (child instanceof CharacterLiteral cl) {
             char c = cl.charAt(1);

@@ -8,7 +8,6 @@ import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstapi.type.ParameterizedType;
 import org.e2immu.cstapi.variable.FieldReference;
-import org.e2immu.cstimpl.info.FieldInfoImpl;
 import org.e2immu.parserapi.Context;
 import org.parsers.java.Node;
 import org.parsers.java.ast.*;
@@ -80,22 +79,22 @@ public class ParseFieldDeclaration extends CommonParse {
 
     private Access access(List<FieldModifier> fieldModifiers) {
         for (FieldModifier fieldModifier : fieldModifiers) {
-            if (fieldModifier.isPublic()) return runtime.newAccessPublic();
-            if (fieldModifier.isPrivate()) return runtime.newAccessPrivate();
-            if (fieldModifier.isProtected()) return runtime.newAccessProtected();
+            if (fieldModifier.isPublic()) return runtime.accessPublic();
+            if (fieldModifier.isPrivate()) return runtime.accessPrivate();
+            if (fieldModifier.isProtected()) return runtime.accessProtected();
         }
-        return runtime.newAccessPackage();
+        return runtime.accessPackage();
     }
 
     private FieldModifier modifier(KeyWord keyWord) {
         return switch (keyWord.getType()) {
-            case FINAL -> runtime.newFieldModifierFinal();
-            case PRIVATE -> runtime.newFieldModifierPrivate();
-            case PROTECTED -> runtime.newFieldModifierProtected();
-            case PUBLIC -> runtime.newFieldModifierPublic();
-            case STATIC -> runtime.newFieldModifierStatic();
-            case TRANSIENT -> runtime.newFieldModifierTransient();
-            case VOLATILE -> runtime.newFieldModifierVolatile();
+            case FINAL -> runtime.fieldModifierFinal();
+            case PRIVATE -> runtime.fieldModifierPrivate();
+            case PROTECTED -> runtime.fieldModifierProtected();
+            case PUBLIC -> runtime.fieldModifierPublic();
+            case STATIC -> runtime.fieldModifierStatic();
+            case TRANSIENT -> runtime.fieldModifierTransient();
+            case VOLATILE -> runtime.fieldModifierVolatile();
             default -> throw new UnsupportedOperationException("Have " + keyWord.getType());
         };
     }

@@ -100,7 +100,7 @@ public class ParseMethodCall extends CommonParse {
         } else {
             NamedType namedType = context.typeContext().get(name0, false);
             if (namedType instanceof TypeInfo typeInfo) {
-                expression = runtime.newTypeExpression(typeInfo.asSimpleParameterizedType(), runtime.diamondNO());
+                expression = runtime.newTypeExpression(typeInfo.asSimpleParameterizedType(), runtime.diamondNo());
             } else {
                 // FIXME could be a package prefix
                 throw new UnsupportedOperationException();
