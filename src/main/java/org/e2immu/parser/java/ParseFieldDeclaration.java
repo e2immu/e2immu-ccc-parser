@@ -65,7 +65,7 @@ public class ParseFieldDeclaration extends CommonParse {
         FieldInfo fieldInfo = runtime.newFieldInfo(name, isStatic, parameterizedType, owner);
         FieldInfo.Builder builder = fieldInfo.builder();
         builder.setAccess(accessCombined);
-        builder.setSource(source(fieldInfo, fd));
+        builder.setSource(source(fieldInfo, null, fd));
         builder.addComments(comments(fd));
 
         fieldModifiers.forEach(builder::addFieldModifier);

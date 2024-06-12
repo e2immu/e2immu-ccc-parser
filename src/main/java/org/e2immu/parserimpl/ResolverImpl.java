@@ -54,27 +54,29 @@ public class ResolverImpl implements Resolver {
         types.add(typeInfoBuilder);
     }
 
+    private static final String START_INDEX = "";
+
     @Override
     public void resolve() {
         LOGGER.info("Start resolving {} type(s), {} field(s)/method(s)", types.size(), todos.size());
 
         for (Todo todo : todos) {
             if (todo.info instanceof FieldInfo.Builder builder) {
-                org.e2immu.cstapi.expression.Expression e = parseExpression.parse(todo.context, todo.expression);
+                org.e2immu.cstapi.expression.Expression e = parseExpression.parse(todo.context, START_INDEX, todo.expression);
                 builder.setInitializer(e);
                 builder.commit();
             } else if (todo.info instanceof MethodInfo.Builder builder) {
                 Element e;
                 if (todo.expression instanceof ExpressionStatement est) {
-                    e = parseStatement.parse(todo.context, est);
+                    e = parseStatement.parse(todo.context, START_INDEX, est);
                 } else if (todo.expression instanceof CodeBlock codeBlock) {
-                    e = parseBlock.parse(todo.context, codeBlock);
+                    e = parseBlock.parse(todo.context, START_INDEX, codeBlock);
                 } else {
-                    e = parseExpression.parse(todo.context, todo.expression);
+                    e = parseExpression.parse(todo.context, START_INDEX, todo.expression);
                 }
                 if (e instanceof Block b) {
                     builder.setMethodBody(b);
-                } else if(e instanceof Statement s) {
+                } else if (e instanceof Statement s) {
                     builder.setMethodBody(runtime.newBlockBuilder().addStatement(s).build());
                 } else {
                     // in Java, we must have a block

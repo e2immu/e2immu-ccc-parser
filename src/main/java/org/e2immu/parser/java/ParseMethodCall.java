@@ -30,7 +30,7 @@ public class ParseMethodCall extends CommonParse {
         this.parseExpression = parseExpression;
     }
 
-    public MethodCall parse(Context context, org.parsers.java.ast.MethodCall mc) {
+    public MethodCall parse(Context context, String index, org.parsers.java.ast.MethodCall mc) {
         MethodCall.Builder builder = runtime.newMethodCallBuilder();
         Expression object;
         int i = 0;
@@ -65,7 +65,7 @@ public class ParseMethodCall extends CommonParse {
         // (, lit expr, )  or  del mc del mc, del expr del expr, del
         expressions = new ArrayList<>();
         for (int k = 1; k < ia.size(); k += 2) {
-            Expression e = parseExpression.parse(context, ia.get(k));
+            Expression e = parseExpression.parse(context, index, ia.get(k));
             expressions.add(e);
         }
 
@@ -73,7 +73,7 @@ public class ParseMethodCall extends CommonParse {
                 .setParameterExpressions(expressions)
                 .setMethodInfo(methodInfo)
                 .setConcreteReturnType(concreteReturnType)
-                .setSource(source(context.info(), mc))
+                .setSource(source(context.info(), index, mc))
                 .addComments(comments(mc))
                 .build();
     }

@@ -1,21 +1,15 @@
 package org.e2immu.parser.java;
 
-import org.e2immu.cstapi.element.Comment;
-import org.e2immu.cstapi.expression.MethodCall;
-import org.e2immu.cstapi.expression.StringConstant;
 import org.e2immu.cstapi.expression.VariableExpression;
 import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.info.TypeInfo;
-import org.e2immu.cstapi.statement.ExpressionAsStatement;
 import org.e2immu.cstapi.statement.ForEachStatement;
-import org.e2immu.cstimpl.element.SingleLineComment;
-import org.e2immu.cstimpl.element.SourceImpl;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class TestParseSimpleForEach extends CommonTestParse {
+public class TestParseForEach extends CommonTestParse {
 
     @Language("java")
     private static final String INPUT = """

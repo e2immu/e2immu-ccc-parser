@@ -1,6 +1,7 @@
 package org.e2immu.parser.java;
 
 import org.e2immu.cstapi.element.Comment;
+import org.e2immu.cstapi.element.Source;
 import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstapi.statement.Block;
 import org.e2immu.parserapi.Context;
@@ -18,15 +19,19 @@ public class ParseBlock extends CommonParse {
         this.parseStatement = parseStatement;
     }
 
-    public Block parse(Context context, CodeBlock codeBlock) {
+    public Block parse(Context context, String index, CodeBlock codeBlock) {
+        Source source = source(context.info(), index, codeBlock);
         List<Comment> comments = comments(codeBlock);
         Block.Builder builder = runtime.newBlockBuilder();
+        int count = 0;
         for (Node child : codeBlock.children()) {
             if (child instanceof Statement s) {
-                org.e2immu.cstapi.statement.Statement statement = parseStatement.parse(context, s);
+                String sIndex = index + "." + count;
+                org.e2immu.cstapi.statement.Statement statement = parseStatement.parse(context, sIndex, s);
                 builder.addStatement(statement);
+                count++;
             }
         }
-        return builder.addComments(comments).build();
+        return builder.setSource(source).addComments(comments).build();
     }
 }

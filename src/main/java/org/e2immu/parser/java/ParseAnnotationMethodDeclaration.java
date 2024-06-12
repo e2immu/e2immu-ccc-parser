@@ -47,7 +47,7 @@ public class ParseAnnotationMethodDeclaration extends CommonParse {
         builder.commitParameters();
 
         builder.addComments(comments(amd));
-        builder.setSource(source(methodInfo, amd));
+        builder.setSource(source(methodInfo, null, amd));
         return methodInfo;
     }
 }

@@ -82,7 +82,7 @@ public class ParseTypeDeclaration extends CommonParse {
                 : packageNameOrEnclosing.getRight().access().combine(access);
         builder.setAccess(accessCombined);
         builder.setTypeNature(typeNature);
-        builder.setSource(source(typeInfo, td));
+        builder.setSource(source(typeInfo, null, td));
 
         if (td.get(i) instanceof ExtendsList extendsList) {
             for (Node child : extendsList.children()) {

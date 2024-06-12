@@ -2,18 +2,10 @@ package org.e2immu.parser.java;
 
 import org.e2immu.cstapi.element.Comment;
 import org.e2immu.cstapi.element.Source;
-import org.e2immu.cstapi.expression.Expression;
-import org.e2immu.cstapi.info.FieldInfo;
 import org.e2immu.cstapi.info.Info;
-import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.runtime.Runtime;
-import org.e2immu.cstapi.type.NamedType;
-import org.e2immu.cstapi.variable.FieldReference;
-import org.e2immu.cstapi.variable.Variable;
-import org.e2immu.parserapi.Context;
 import org.parsers.java.Node;
 import org.parsers.java.ast.MultiLineComment;
-import org.parsers.java.ast.Name;
 import org.parsers.java.ast.SingleLineComment;
 
 import java.util.List;
@@ -38,8 +30,12 @@ public abstract class CommonParse {
         }).filter(Objects::nonNull).toList();
     }
 
-    protected Source source(Info info, Node node) {
-        return runtime.newParserSource(info, node.getBeginLine(), node.getBeginColumn(), node.getEndLine(),
+    /*
+    this implementation gives an "imperfect" parent... See e.g. parseBlock: we cannot pass on the parent during
+    parsing, because we still have the builder at that point in time.
+     */
+    protected Source source(Info info, String index, Node node) {
+        return runtime.newParserSource(info, index, node.getBeginLine(), node.getBeginColumn(), node.getEndLine(),
                 node.getEndColumn());
     }
 }

@@ -1,5 +1,7 @@
 package org.e2immu.parser.java;
 
+import org.e2immu.cstapi.element.Comment;
+import org.e2immu.cstapi.element.Source;
 import org.e2immu.cstapi.expression.*;
 import org.e2immu.cstapi.expression.Expression;
 import org.e2immu.cstapi.info.FieldInfo;
@@ -15,6 +17,8 @@ import org.parsers.java.ast.MethodCall;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
 import static org.parsers.java.Token.TokenType.*;
 
 public class ParseExpression extends CommonParse {
@@ -28,33 +32,39 @@ public class ParseExpression extends CommonParse {
         parseMethodCall = new ParseMethodCall(runtime, this);
     }
 
-    public Expression parse(Context context, Node node) {
+    public Expression parse(Context context, String index, Node node) {
         try {
-            return internalParse(context, node);
+            return internalParse(context, index, node);
         } catch (Throwable t) {
             LOGGER.error("Caught exception parsing expression at line {}, pos {}", node.getBeginLine(), node.getBeginColumn());
             throw t;
         }
     }
 
-    private Expression internalParse(Context context, Node node) {
+    private Expression internalParse(Context context, String index, Node node) {
+        Source source = source(context.info(), index, node);
+        List<Comment> comments = comments(node);
+
         if (node instanceof DotName dotName) {
-            return parseDotName(context, dotName);
+            return parseDotName(context, index, dotName);
         }
         if (node instanceof MethodCall mc) {
-            return parseMethodCall.parse(context, mc);
+            return parseMethodCall.parse(context, index, mc);
         }
         if (node instanceof LiteralExpression le) {
             return parseLiteral(context, le);
         }
         if (node instanceof MultiplicativeExpression me) {
-            return parseMultiplicative(context, me);
+            return parseMultiplicative(context, index, me);
         }
         if (node instanceof AdditiveExpression ae) {
-            return parseAdditive(context, ae);
+            return parseAdditive(context, index, ae);
+        }
+        if (node instanceof RelationalExpression re) {
+            return parseRelational(context, index, re);
         }
         if (node instanceof UnaryExpression ue) {
-            return parseUnaryExpression(context, ue);
+            return parseUnaryExpression(context, index, ue);
         }
         if (node instanceof Name name) {
             String nameAsString = name.getAsString();
@@ -64,26 +74,26 @@ public class ParseExpression extends CommonParse {
                 return runtime.newArrayLength(runtime.newVariableExpression(array));
             }
             Variable v = parseVariable(context, nameAsString);
-            return runtime.newVariableExpression(v);
+            return runtime.newVariableExpressionBuilder().setVariable(v).setSource(source).addComments(comments).build();
         }
         if (node instanceof CastExpression castExpression) {
-            return parseCast(context, castExpression);
+            return parseCast(context, index, castExpression);
         }
         if (node instanceof AssignmentExpression assignmentExpression) {
-            return parseAssignment(context, assignmentExpression);
+            return parseAssignment(context, index, assignmentExpression);
         }
         if (node instanceof Parentheses p) {
-            return parseParentheses(context, p);
+            return parseParentheses(context, index, p);
         }
         throw new UnsupportedOperationException("node " + node.getClass());
     }
 
-    private Expression parseParentheses(Context context, Parentheses p) {
-        Expression e = parse(context, p.getNestedExpression());
+    private Expression parseParentheses(Context context, String index, Parentheses p) {
+        Expression e = parse(context, index, p.getNestedExpression());
         return runtime.newEnclosedExpression(e);
     }
 
-    private Expression parseUnaryExpression(Context context, UnaryExpression ue) {
+    private Expression parseUnaryExpression(Context context, String index, UnaryExpression ue) {
         MethodInfo methodInfo;
         if (ue.get(0) instanceof Operator operator) {
             methodInfo = switch (operator.getType()) {
@@ -94,14 +104,14 @@ public class ParseExpression extends CommonParse {
                 default -> throw new UnsupportedOperationException();
             };
         } else throw new UnsupportedOperationException();
-        Expression expression = parse(context, ue.get(1));
+        Expression expression = parse(context, index, ue.get(1));
         if (methodInfo == null) {
             return expression;
         }
         return runtime.newUnaryOperator(methodInfo, expression, runtime.precedenceUNARY());
     }
 
-    private VariableExpression parseDotName(Context context, DotName dotName) {
+    private VariableExpression parseDotName(Context context, String index, DotName dotName) {
         String name = dotName.get(2).getSource();
         Expression scope;
         FieldInfo fieldInfo;
@@ -112,23 +122,23 @@ public class ParseExpression extends CommonParse {
                 fieldInfo = context.enclosingType().getFieldByName(name, true);
             } else throw new UnsupportedOperationException("NYI");
         } else {
-            scope = parse(context, n0);
+            scope = parse(context, index, n0);
             throw new UnsupportedOperationException();
         }
         FieldReference fr = runtime.newFieldReference(fieldInfo, scope, fieldInfo.type()); // FIXME generics
         return runtime.newVariableExpression(fr);
     }
 
-    private Assignment parseAssignment(Context context, AssignmentExpression assignmentExpression) {
-        Expression target = parse(context, assignmentExpression.get(0));
-        Expression value = parse(context, assignmentExpression.get(2));
+    private Assignment parseAssignment(Context context, String index, AssignmentExpression assignmentExpression) {
+        Expression target = parse(context, index, assignmentExpression.get(0));
+        Expression value = parse(context, index, assignmentExpression.get(2));
         return runtime.newAssignment(target, value);
     }
 
-    private Cast parseCast(Context context, CastExpression castExpression) {
+    private Cast parseCast(Context context, String index, CastExpression castExpression) {
         // 0 = '(', 2 = ')'
         ParameterizedType pt = parseType.parse(context, castExpression.get(1));
-        Expression expression = parse(context, castExpression.get(3));
+        Expression expression = parse(context, index, castExpression.get(3));
         return runtime.newCast(expression, pt);
     }
 
@@ -136,9 +146,9 @@ public class ParseExpression extends CommonParse {
         return context.variableContext().get(name, true);
     }
 
-    private Expression parseAdditive(Context context, AdditiveExpression ae) {
-        Expression lhs = parse(context, ae.get(0));
-        Expression rhs = parse(context, ae.get(2));
+    private Expression parseAdditive(Context context, String index, AdditiveExpression ae) {
+        Expression lhs = parse(context, index, ae.get(0));
+        Expression rhs = parse(context, index, ae.get(2));
         Node.NodeType token = ae.get(1).getType();
         MethodInfo operator;
         if (token.equals(PLUS)) {
@@ -151,9 +161,9 @@ public class ParseExpression extends CommonParse {
         return runtime.newBinaryOperator(lhs, operator, rhs, runtime.precedenceADDITIVE());
     }
 
-    private Expression parseMultiplicative(Context context, MultiplicativeExpression me) {
-        Expression lhs = parse(context, me.get(0));
-        Expression rhs = parse(context, me.get(2));
+    private Expression parseMultiplicative(Context context, String index, MultiplicativeExpression me) {
+        Expression lhs = parse(context, index, me.get(0));
+        Expression rhs = parse(context, index, me.get(2));
         Node.NodeType token = me.get(1).getType();
         MethodInfo operator;
         if (token.equals(STAR)) {
@@ -166,6 +176,28 @@ public class ParseExpression extends CommonParse {
             throw new UnsupportedOperationException();
         }
         return runtime.newBinaryOperator(lhs, operator, rhs, runtime.precedenceMULTIPLICATIVE());
+    }
+
+    private Expression parseRelational(Context context, String index, RelationalExpression re) {
+        Expression lhs = parse(context, index, re.get(0));
+        Expression rhs = parse(context, index, re.get(2));
+        Node.NodeType token = re.get(1).getType();
+        if (token.equals(LE)) {
+            return runtime.less(lhs, rhs, true);
+        }
+        if (token.equals(LT)) {
+            return runtime.less(lhs, rhs, false);
+        }
+        if (token.equals(GE)) {
+            return runtime.greater(lhs, rhs, true);
+        }
+        if (token.equals(GT)) {
+            return runtime.greater(lhs, rhs, false);
+        }
+        if (token.equals(EQ)) {
+            return runtime.equals(lhs, rhs);
+        }
+        throw new UnsupportedOperationException("Token " + token);
     }
 
     private Expression parseLiteral(Context context, LiteralExpression le) {
@@ -193,7 +225,7 @@ public class ParseExpression extends CommonParse {
             }
             return runtime.newChar(c);
         }
-        if(child instanceof StringLiteral sl) {
+        if (child instanceof StringLiteral sl) {
             return runtime.newStringConstant(sl.getString());
         }
         throw new UnsupportedOperationException("literal expression " + le.getClass());

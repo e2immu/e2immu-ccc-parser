@@ -78,7 +78,7 @@ public class ParseMethodDeclaration extends CommonParse {
         Access accessCombined = context.enclosingType().access().combine(access);
         builder.setAccess(accessCombined);
         builder.addComments(comments(md));
-        builder.setSource(source(methodInfo, md));
+        builder.setSource(source(methodInfo, null, md));
         return methodInfo;
     }
 
