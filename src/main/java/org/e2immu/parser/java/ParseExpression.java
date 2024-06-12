@@ -12,6 +12,7 @@ import org.e2immu.cstapi.variable.FieldReference;
 import org.e2immu.cstapi.variable.Variable;
 import org.e2immu.parserapi.Context;
 import org.parsers.java.Node;
+import org.parsers.java.Token;
 import org.parsers.java.ast.*;
 import org.parsers.java.ast.MethodCall;
 import org.slf4j.Logger;
@@ -83,7 +84,10 @@ public class ParseExpression extends CommonParse {
             return parseCast(context, index, castExpression);
         }
         if (node instanceof AssignmentExpression assignmentExpression) {
-            return parseAssignment(context, index, assignmentExpression);
+            Expression target = parse(context, index, assignmentExpression.get(0));
+            Expression value = parse(context, index, assignmentExpression.get(2));
+            return runtime.newAssignmentBuilder().setValue(value).setTarget(target)
+                    .addComments(comments).setSource(source).build();
         }
         if (node instanceof ArrayAccess arrayAccess) {
             assert arrayAccess.size() == 4 : "Not implemented";
@@ -95,6 +99,28 @@ public class ParseExpression extends CommonParse {
         }
         if (node instanceof Parentheses p) {
             return parseParentheses(context, index, p);
+        }
+        if (node instanceof PostfixExpression pfe) {
+            Expression target = parse(context, index, pfe.get(0));
+            MethodInfo binaryOperator;
+            MethodInfo assignmentOperator;
+            boolean isPlus;
+            if (pfe.get(1) instanceof Operator operator) {
+                if (INCR.equals(operator.getType())) {
+                    isPlus = true;
+                    assignmentOperator = runtime.assignPlusOperatorInt();
+                    binaryOperator = runtime.plusOperatorInt();
+                } else if (DECR.equals(operator.getType())) {
+                    isPlus = false;
+                    assignmentOperator = runtime.assignMinusOperatorInt();
+                    binaryOperator = runtime.minusOperatorInt();
+                } else throw new UnsupportedOperationException();
+                return runtime.newAssignmentBuilder().setValue(runtime.intOne()).setTarget(target)
+                        .setAssignmentOperator(assignmentOperator).setAssignmentOperatorIsPlus(isPlus)
+                        .setBinaryOperator(binaryOperator)
+                        .setPrefixPrimitiveOperator(false) // postfix
+                        .addComments(comments).setSource(source).build();
+            } else throw new UnsupportedOperationException();
         }
         throw new UnsupportedOperationException("node " + node.getClass());
     }
@@ -138,12 +164,6 @@ public class ParseExpression extends CommonParse {
         }
         FieldReference fr = runtime.newFieldReference(fieldInfo, scope, fieldInfo.type()); // FIXME generics
         return runtime.newVariableExpression(fr);
-    }
-
-    private Assignment parseAssignment(Context context, String index, AssignmentExpression assignmentExpression) {
-        Expression target = parse(context, index, assignmentExpression.get(0));
-        Expression value = parse(context, index, assignmentExpression.get(2));
-        return runtime.newAssignment(target, value);
     }
 
     private Cast parseCast(Context context, String index, CastExpression castExpression) {
