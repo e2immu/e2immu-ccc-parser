@@ -73,7 +73,7 @@ public class CommonTestParse {
 
         clazz.builder().addTypeParameter(runtime.newTypeParameter(0, "C", clazz));
 
-        MethodInfo pow = runtime.newMethod(math, "pow", runtime.newMethodTypeStaticMethod());
+        MethodInfo pow = runtime.newMethod(math, "pow", runtime.methodTypeStaticMethod());
         pow.builder().addParameter("base", runtime.doubleParameterizedType());
         pow.builder().addParameter("exponent", runtime.doubleParameterizedType());
         pow.builder().setReturnType(runtime.doubleParameterizedType());
@@ -81,7 +81,7 @@ public class CommonTestParse {
         math.builder().addMethod(pow);
         math.builder().commit();
 
-        MethodInfo println = runtime.newMethod(printStream, "println", runtime.newMethodTypeMethod());
+        MethodInfo println = runtime.newMethod(printStream, "println", runtime.methodTypeMethod());
         println.builder().addParameter("string", runtime.stringParameterizedType());
         println.builder().setReturnType(runtime.voidParameterizedType());
         println.builder().commit();

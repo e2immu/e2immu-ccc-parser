@@ -38,7 +38,7 @@ public class ParseMethodDeclaration extends CommonParse {
         ParameterizedType returnType;
         if (md.get(i) instanceof ReturnType rt) {
             // depending on the modifiers...
-            methodType = runtime.newMethodTypeMethod();
+            methodType = runtime.methodTypeMethod();
             returnType = parseType.parse(context, rt.children());
             i++;
         } else throw new UnsupportedOperationException();

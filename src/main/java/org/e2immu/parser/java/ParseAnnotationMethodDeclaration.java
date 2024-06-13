@@ -1,15 +1,9 @@
 package org.e2immu.parser.java;
 
 import org.e2immu.cstapi.info.MethodInfo;
-import org.e2immu.cstapi.info.ParameterInfo;
 import org.e2immu.cstapi.runtime.Runtime;
-import org.e2immu.cstapi.statement.Block;
 import org.e2immu.cstapi.type.ParameterizedType;
-import org.e2immu.cstimpl.info.MethodInfoImpl;
-import org.e2immu.cstimpl.type.ParameterizedTypeImpl;
 import org.e2immu.parserapi.Context;
-import org.e2immu.parserimpl.ForwardTypeImpl;
-import org.parsers.java.Node;
 import org.parsers.java.ast.*;
 
 public class ParseAnnotationMethodDeclaration extends CommonParse {
@@ -31,7 +25,7 @@ public class ParseAnnotationMethodDeclaration extends CommonParse {
         ParameterizedType returnType;
         if (amd.children().get(i) instanceof Type type) {
             // depending on the modifiers...
-            methodType = runtime.newMethodTypeMethod();
+            methodType = runtime.methodTypeMethod();
             returnType = parseType.parse(context, type);
             i++;
         } else throw new UnsupportedOperationException();

@@ -95,6 +95,7 @@ public class ParseTypeDeclaration extends CommonParse {
         }
 
         Context newContext = context.newSubType(typeInfo);
+        newContext.typeContext().addToContext(typeInfo);
 
         if (td.get(i) instanceof TypeParameters typeParameters) {
             int j = 1;
@@ -142,6 +143,11 @@ public class ParseTypeDeclaration extends CommonParse {
                 }
             }
 
+            if (countNormalConstructors == 0 && (typeNature.isClass() || typeNature.isEnum())) {
+                boolean privateEmptyConstructor = typeNature.isEnum();
+                builder.addConstructor(createEmptyConstructor(typeInfo, privateEmptyConstructor));
+            }
+
             // FINALLY, do the fields
             for (FieldDeclaration fieldDeclaration : fieldDeclarations) {
                 FieldInfo field = parseFieldDeclaration.parse(newContext, fieldDeclaration);
@@ -160,6 +166,18 @@ public class ParseTypeDeclaration extends CommonParse {
 
         context.resolver().add(builder);
         return typeInfo;
+    }
+
+    private MethodInfo createEmptyConstructor(TypeInfo typeInfo, boolean privateEmptyConstructor) {
+        MethodInfo methodInfo = runtime.newConstructor(typeInfo, runtime.methodTypeSyntheticConstructor());
+        MethodInfo.Builder builder = methodInfo.builder();
+        builder.setReturnType(runtime.parameterizedTypeReturnTypeOfConstructor());
+        builder.setMethodBody(runtime.emptyBlock());
+        builder.addMethodModifier(privateEmptyConstructor
+                ? runtime.methodModifierPrivate() : runtime.methodModifierPublic());
+        builder.setSynthetic(true);
+        builder.computeAccess();
+        return methodInfo;
     }
 
     private TypeParameter parseTypeParameter(Context context, Node node, TypeInfo owner, int typeParameterIndex) {

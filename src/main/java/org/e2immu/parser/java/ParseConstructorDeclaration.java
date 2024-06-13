@@ -39,7 +39,7 @@ public class ParseConstructorDeclaration extends CommonParse {
         MethodInfo.MethodType methodType;
         ParameterizedType returnType;
         if (cd.get(i) instanceof Identifier) {
-            methodType = runtime.newMethodTypeConstructor();
+            methodType = runtime.methodTypeConstructor();
             returnType = runtime.parameterizedTypeReturnTypeOfConstructor();
         } else throw new UnsupportedOperationException();
         String name;

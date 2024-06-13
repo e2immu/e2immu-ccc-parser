@@ -25,12 +25,14 @@ import static org.parsers.java.Token.TokenType.*;
 public class ParseExpression extends CommonParse {
     private static final Logger LOGGER = LoggerFactory.getLogger(ParseExpression.class);
     private final ParseMethodCall parseMethodCall;
+    private final ParseConstructorCall parseConstructorCall;
     private final ParseType parseType;
 
     public ParseExpression(Runtime runtime) {
         super(runtime);
         parseType = new ParseType(runtime);
         parseMethodCall = new ParseMethodCall(runtime, this);
+        parseConstructorCall = new ParseConstructorCall(runtime, this);
     }
 
     public Expression parse(Context context, String index, Node node) {
@@ -99,6 +101,9 @@ public class ParseExpression extends CommonParse {
         }
         if (node instanceof Parentheses p) {
             return parseParentheses(context, index, p);
+        }
+        if (node instanceof AllocationExpression ae) {
+            return parseConstructorCall.parse(context, index, ae);
         }
         if (node instanceof PostfixExpression pfe) {
             Expression target = parse(context, index, pfe.get(0));

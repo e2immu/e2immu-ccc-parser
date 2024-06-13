@@ -34,9 +34,10 @@ dependencies {
     implementation("org.jetbrains:annotations:24.1.0")
 
     implementation("org.e2immu:e2immu-cst-api:some.version")
-    implementation("org.e2immu:e2immu-cst-impl:some.version")
     implementation("org.e2immu:e2immu-support:0.6.4")
     implementation("org.slf4j:slf4j-api:2.0.7")
+
+    testImplementation("org.e2immu:e2immu-cst-impl:some.version")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.3")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.3")
