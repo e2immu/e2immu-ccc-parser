@@ -19,6 +19,7 @@ import java.util.List;
 public class CommonTestParse {
 
     protected final Runtime runtime = new RuntimeImpl();
+    protected final TypeInfo clazz;
     protected final TypeInfo math;
     protected final TypeInfo system;
     protected final TypeInfo exception;
@@ -44,6 +45,7 @@ public class CommonTestParse {
         @Override
         public TypeInfo get(String fullyQualifiedName) {
             return switch (fullyQualifiedName) {
+                case "java.lang.Class"-> clazz;
                 case "java.lang.String" -> runtime.stringTypeInfo();
                 case "java.lang.System" -> system;
                 case "java.lang.Math" -> math;
@@ -63,10 +65,13 @@ public class CommonTestParse {
         CompilationUnit javaLang = runtime.newCompilationUnitBuilder().setPackageName("java.lang").build();
         CompilationUnit javaIo = runtime.newCompilationUnitBuilder().setPackageName("java.io").build();
 
+        clazz = runtime.newTypeInfo(javaLang, "Class");
         math = runtime.newTypeInfo(javaLang, "Math");
         printStream = runtime.newTypeInfo(javaIo, "PrintStream");
         system = runtime.newTypeInfo(javaLang, "System");
         exception = runtime.newTypeInfo(javaLang, "Exception");
+
+        clazz.builder().addTypeParameter(runtime.newTypeParameter(0, "C", clazz));
 
         MethodInfo pow = runtime.newMethod(math, "pow", runtime.newMethodTypeStaticMethod());
         pow.builder().addParameter("base", runtime.doubleParameterizedType());

@@ -10,6 +10,7 @@ import org.parsers.java.Node;
 import org.parsers.java.Token;
 import org.parsers.java.ast.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ParseType extends CommonParse {
@@ -24,10 +25,10 @@ public class ParseType extends CommonParse {
         Node n0 = nodes.get(0);
         if (n0 instanceof Identifier identifier) {
             NamedType nt = context.typeContext().get(identifier.getSource(), true);
-            pt = ((TypeInfo) nt).asParameterizedType(context.runtime());
+            pt = nt.asParameterizedType(context.runtime());
         } else if (n0 instanceof ObjectType ot && ot.get(0) instanceof Identifier id) {
             NamedType nt = context.typeContext().get(id.getSource(), true);
-            pt = ((TypeInfo) nt).asParameterizedType(context.runtime());
+            pt = nt.asParameterizedType(context.runtime());
         } else {
             if (n0 instanceof PrimitiveType primitive && primitive.get(0) instanceof Primitive p) {
                 tt = p.getType();
@@ -51,24 +52,43 @@ public class ParseType extends CommonParse {
                 pt = null;
             }
         }
-        if (pt != null) {
-            int arrays = countArrays(nodes, 1);
-            if (arrays == 0) {
-                return pt;
-            } else {
-                return new ParameterizedTypeImpl(pt.typeInfo(), arrays);
+        assert pt != null;
+        ParameterizedType pt2;
+        if (nodes.size() > 1 && nodes.get(1) instanceof TypeArguments tas) {
+            List<ParameterizedType> typeArguments = new ArrayList<>();
+            int j = 1;
+            while (j < tas.size()) {
+                if (tas.get(j) instanceof TypeArgument ta) {
+                    ParameterizedType arg = parse(context, ta);
+                    typeArguments.add(arg);
+                } else if (tas.get(j) instanceof Operator o && Token.TokenType.HOOK.equals(o.getType())) {
+                    typeArguments.add(runtime.parameterizedTypeWildcard());
+                }
+                j += 2;
+
             }
+            if (!typeArguments.isEmpty()) {
+                pt2 = pt.withParameters(List.copyOf(typeArguments));
+            } else {
+                pt2 = pt;
+            }
+        } else {
+            pt2 = pt;
         }
-        return new ParameterizedTypeImpl();
+        int arrays = countArrays(nodes);
+        if (arrays == 0) {
+            return pt2;
+        } else {
+            return pt2.copyWithArrays(arrays);
+        }
     }
 
-    private int countArrays(List<Node> nodes, int i) {
+    private int countArrays(List<Node> nodes) {
         int arrays = 0;
-        while (i < nodes.size()) {
-            if (nodes.get(i) instanceof Delimiter d && "[".equals(d.getSource())) {
-                i += 2;
-                arrays++;
-            }
+        int i = 1;
+        while (i < nodes.size() && nodes.get(i) instanceof Delimiter d && "[".equals(d.getSource())) {
+            i += 2;
+            arrays++;
         }
         return arrays;
     }

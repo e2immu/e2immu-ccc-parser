@@ -4,7 +4,10 @@ import org.e2immu.cstapi.element.Comment;
 import org.e2immu.cstapi.element.CompilationUnit;
 import org.e2immu.cstapi.info.*;
 import org.e2immu.cstapi.runtime.Runtime;
+import org.e2immu.cstapi.type.ParameterizedType;
 import org.e2immu.cstapi.type.TypeNature;
+import org.e2immu.cstapi.type.TypeParameter;
+import org.e2immu.cstapi.type.Wildcard;
 import org.e2immu.parserapi.Context;
 import org.e2immu.support.Either;
 import org.parsers.java.Node;
@@ -19,6 +22,7 @@ public class ParseTypeDeclaration extends CommonParse {
     private final ParseMethodDeclaration parseMethodDeclaration;
     private final ParseAnnotationMethodDeclaration parseAnnotationMethodDeclaration;
     private final ParseFieldDeclaration parseFieldDeclaration;
+    private final ParseType parseType;
 
     public ParseTypeDeclaration(Runtime runtime) {
         super(runtime);
@@ -26,6 +30,7 @@ public class ParseTypeDeclaration extends CommonParse {
         parseAnnotationMethodDeclaration = new ParseAnnotationMethodDeclaration(runtime);
         parseFieldDeclaration = new ParseFieldDeclaration(runtime);
         parseConstructorDeclaration = new ParseConstructorDeclaration(runtime);
+        parseType = new ParseType(runtime);
     }
 
     public TypeInfo parse(Context context,
@@ -71,10 +76,7 @@ public class ParseTypeDeclaration extends CommonParse {
         TypeInfo.Builder builder = typeInfo.builder();
         builder.addComments(comments);
         typeModifiers.forEach(builder::addTypeModifier);
-        Access access = access(typeModifiers);
-        Access accessCombined = packageNameOrEnclosing.isLeft() ? access
-                : packageNameOrEnclosing.getRight().access().combine(access);
-        builder.setAccess(accessCombined);
+        builder.computeAccess();
         builder.setTypeNature(typeNature);
         builder.setSource(source(typeInfo, null, td));
 
@@ -94,6 +96,18 @@ public class ParseTypeDeclaration extends CommonParse {
 
         Context newContext = context.newSubType(typeInfo);
 
+        if (td.get(i) instanceof TypeParameters typeParameters) {
+            int j = 1;
+            int typeParameterIndex = 0;
+            while (j < typeParameters.size()) {
+                TypeParameter typeParameter = parseTypeParameter(newContext, typeParameters.get(j), typeInfo,
+                        typeParameterIndex);
+                typeInfo.builder().addTypeParameter(typeParameter);
+                j += 2; // skip the ',' or '>' delimiter
+                typeParameterIndex++;
+            }
+            i++;
+        }
 
         Node body = td.get(i);
         if (body instanceof ClassOrInterfaceBody) {
@@ -148,6 +162,27 @@ public class ParseTypeDeclaration extends CommonParse {
         return typeInfo;
     }
 
+    private TypeParameter parseTypeParameter(Context context, Node node, TypeInfo owner, int typeParameterIndex) {
+        String name;
+        if (node instanceof Identifier) {
+            name = node.getSource();
+        } else if (node instanceof org.parsers.java.ast.TypeParameter tp) {
+            name = tp.get(0).getSource();
+        } else throw new UnsupportedOperationException();
+        TypeParameter typeParameter = runtime.newTypeParameter(typeParameterIndex, name, owner);
+        context.typeContext().addToContext(typeParameter);
+        // do type bounds
+        TypeParameter.Builder builder = typeParameter.builder();
+        if (node instanceof org.parsers.java.ast.TypeParameter tp) {
+            if (tp.get(1) instanceof TypeBound tb) {
+                Wildcard wildcard;
+                ParameterizedType typeBound = parseType.parse(context, tb.get(1));
+                builder.addTypeBound(typeBound);
+            } else throw new UnsupportedOperationException();
+        }
+        return builder.commit();
+    }
+
     private TypeNature getTypeNature(TypeDeclaration td, Token.TokenType tt) {
         return switch (tt) {
             case CLASS -> runtime.typeNatureClass();
@@ -157,15 +192,6 @@ public class ParseTypeDeclaration extends CommonParse {
             case RECORD -> runtime.typeNatureRecord();
             default -> null;
         };
-    }
-
-    private Access access(List<TypeModifier> typeModifiers) {
-        for (TypeModifier typeModifier : typeModifiers) {
-            if (typeModifier.isPublic()) return runtime.accessPublic();
-            if (typeModifier.isPrivate()) return runtime.accessPrivate();
-            if (typeModifier.isProtected()) return runtime.accessProtected();
-        }
-        return runtime.accessPackage();
     }
 
     private TypeModifier getTypeModifier(Token.TokenType tt) {
