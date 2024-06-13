@@ -47,6 +47,7 @@ public class CommonTestParse {
             return switch (fullyQualifiedName) {
                 case "java.lang.Class"-> clazz;
                 case "java.lang.String" -> runtime.stringTypeInfo();
+                case "java.lang.Integer" -> runtime.integerTypeInfo();
                 case "java.lang.System" -> system;
                 case "java.lang.Math" -> math;
                 case "java.lang.Exception" -> exception;

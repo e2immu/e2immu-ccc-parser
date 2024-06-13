@@ -47,7 +47,9 @@ public class TestParseConstructorCall extends CommonTestParse {
               K k;
               public static void main(String[] args) {
                 C<String> c = new C<>();
-                System.out.println(c);
+                C<Integer> d = new C<Integer>();
+                C<K> e = new C();
+                System.out.println(c+"="+d);
               }
             }
             """;
@@ -66,8 +68,35 @@ public class TestParseConstructorCall extends CommonTestParse {
 
             assertSame(constructor, cc.constructor());
             assertSame(typeInfo, cc.parameterizedType().typeInfo());
+            assertTrue(cc.diamond().isYes());
+
             assertEquals("new C<>()", cc.toString());
             assertEquals("C<String> c=new C<>()", lvc.toString());
+        } else fail();
+        if (main.methodBody().statements().get(1) instanceof LocalVariableCreation lvc
+            && lvc.localVariable().assignmentExpression() instanceof ConstructorCall cc) {
+            ParameterizedType pt = lvc.localVariable().parameterizedType();
+
+            assertSame(constructor, cc.constructor());
+            ParameterizedType ccPt = cc.parameterizedType();
+            assertSame(typeInfo, ccPt.typeInfo());
+            assertEquals(1, ccPt.parameters().size());
+            assertEquals(pt, ccPt);
+            assertTrue(cc.diamond().isShowAll());
+            assertEquals("new C<Integer>()", cc.toString());
+            assertEquals("C<Integer> d=new C<Integer>()", lvc.toString());
+        } else fail();
+
+        if (main.methodBody().statements().get(2) instanceof LocalVariableCreation lvc
+            && lvc.localVariable().assignmentExpression() instanceof ConstructorCall cc) {
+
+            assertSame(constructor, cc.constructor());
+            ParameterizedType ccPt = cc.parameterizedType();
+            assertSame(typeInfo, ccPt.typeInfo());
+            assertEquals(0, ccPt.parameters().size());
+            assertTrue(cc.diamond().isNo());
+            assertEquals("new C()", cc.toString());
+            assertEquals("C<K> e=new C()", lvc.toString());
         } else fail();
     }
 }

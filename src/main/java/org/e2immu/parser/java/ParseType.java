@@ -23,7 +23,7 @@ public class ParseType extends CommonParse {
         Node n0 = nodes.get(0);
         if (n0 instanceof Identifier identifier) {
             NamedType nt = context.typeContext().get(identifier.getSource(), true);
-            pt = nt.asParameterizedType(context.runtime());
+            pt = nt.asSimpleParameterizedType();
         } else if (n0 instanceof ObjectType ot && ot.get(0) instanceof Identifier id) {
             NamedType nt = context.typeContext().get(id.getSource(), true);
             pt = nt.asParameterizedType(context.runtime());
@@ -61,7 +61,10 @@ public class ParseType extends CommonParse {
                     typeArguments.add(arg);
                 } else if (tas.get(j) instanceof Operator o && Token.TokenType.HOOK.equals(o.getType())) {
                     typeArguments.add(runtime.parameterizedTypeWildcard());
-                }
+                } else if(tas.get(j) instanceof Type type) {
+                    ParameterizedType arg = parse(context, type);
+                    typeArguments.add(arg);
+                } else throw new UnsupportedOperationException();
                 j += 2;
 
             }

@@ -43,10 +43,12 @@ public class ParseConstructorCall extends CommonParse {
 
         Diamond diamond;
         int i = 2;
-        if (ae.get(i) instanceof DiamondOperator diamondOperator) {
+        if (ae.get(i) instanceof DiamondOperator) {
             diamond = runtime.diamondYes();
             i++;
-        } else diamond = runtime.diamondNo();
+        } else {
+            diamond = type.parameters().isEmpty() ? runtime.diamondNo() : runtime.diamondShowAll();
+        }
         int numArguments;
         if (ae.get(i) instanceof InvocationArguments ia) {
             numArguments = (ia.size() - 1) / 2;
