@@ -18,7 +18,7 @@ import java.util.List;
 
 public class CommonTestParse {
 
-    private TypeInfo predefined(String fullyQualifiedName) {
+    private TypeInfo predefined(String fullyQualifiedName, boolean complain) {
         return switch (fullyQualifiedName) {
             case "java.lang.Class" -> clazz;
             case "java.lang.String" -> runtime.stringTypeInfo();
@@ -28,14 +28,17 @@ public class CommonTestParse {
             case "java.lang.Exception" -> exception;
             case "java.io.PrintStream" -> printStream;
             case "java.util.function.Function" -> function;
-            default -> throw new UnsupportedOperationException("Type " + fullyQualifiedName);
+            default -> {
+                if (complain) throw new UnsupportedOperationException("Type " + fullyQualifiedName);
+                yield null;
+            }
         };
     }
 
     protected final Runtime runtime = new RuntimeImpl() {
         @Override
         public TypeInfo getFullyQualified(String name, boolean complain) {
-            return predefined(name);
+            return predefined(name, complain);
         }
 
         @Override

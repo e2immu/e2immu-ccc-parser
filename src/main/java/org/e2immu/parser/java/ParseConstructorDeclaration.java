@@ -61,10 +61,10 @@ public class ParseConstructorDeclaration extends CommonParse {
         while (i < cd.size() && cd.get(i) instanceof Delimiter) i++;
         if (cd.get(i) instanceof ExpressionStatement est) {
             Context newContext = context.newVariableContextForMethodBlock(methodInfo, null);
-            context.resolver().add(builder, est, newContext);
+            context.resolver().add(builder, context.emptyForwardType(), est, newContext);
         } else if (cd.get(i) instanceof CodeBlock codeBlock) {
             Context newContext = context.newVariableContextForMethodBlock(methodInfo, null);
-            context.resolver().add(builder, codeBlock, newContext);
+            context.resolver().add(builder, context.emptyForwardType(), codeBlock, newContext);
         } else {
             builder.setMethodBody(runtime.emptyBlock());
         }

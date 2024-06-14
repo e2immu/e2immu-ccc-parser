@@ -9,6 +9,7 @@ import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstapi.type.ParameterizedType;
 import org.e2immu.cstapi.variable.FieldReference;
 import org.e2immu.parserapi.Context;
+import org.e2immu.parserapi.ForwardType;
 import org.parsers.java.Node;
 import org.parsers.java.ast.*;
 
@@ -72,7 +73,8 @@ public class ParseFieldDeclaration extends CommonParse {
         FieldReference fieldReference = runtime.newFieldReference(fieldInfo, scope, fieldInfo.type()); // FIXME generics
         context.variableContext().add(fieldReference);
         if (expression != null) {
-            context.resolver().add(fieldInfo.builder(), expression, context);
+            ForwardType fwd = context.newForwardType(fieldInfo.type());
+            context.resolver().add(fieldInfo.builder(), fwd, expression, context);
         }
         return fieldInfo;
     }

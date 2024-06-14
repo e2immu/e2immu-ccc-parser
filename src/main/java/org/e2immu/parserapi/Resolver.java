@@ -6,7 +6,7 @@ import org.parsers.java.Node;
 
 public interface Resolver {
 
-    void add(Info.Builder<?> info, Node expression, Context context);
+    void add(Info.Builder<?> infoBuilder, ForwardType forwardType, Node expression, Context context);
 
     void add(TypeInfo.Builder typeInfoBuilder);
 

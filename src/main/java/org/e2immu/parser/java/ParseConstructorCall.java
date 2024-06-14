@@ -5,6 +5,7 @@ import org.e2immu.cstapi.expression.Expression;
 import org.e2immu.cstapi.expression.MethodCall;
 import org.e2immu.cstapi.info.FieldInfo;
 import org.e2immu.cstapi.info.MethodInfo;
+import org.e2immu.cstapi.info.ParameterInfo;
 import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstapi.type.Diamond;
@@ -13,6 +14,7 @@ import org.e2immu.cstapi.type.ParameterizedType;
 import org.e2immu.cstapi.variable.FieldReference;
 import org.e2immu.cstapi.variable.Variable;
 import org.e2immu.parserapi.Context;
+import org.e2immu.parserapi.ForwardType;
 import org.parsers.java.Token;
 import org.parsers.java.ast.*;
 import org.slf4j.Logger;
@@ -66,7 +68,9 @@ public class ParseConstructorCall extends CommonParse {
         // (, lit expr, )  or  del mc del mc, del expr del expr, del
         expressions = new ArrayList<>();
         for (int k = 0; k < numArguments; k++) {
-            Expression e = parseExpression.parse(context, index, ia.get(1 + 2 * k));
+            ParameterInfo pi = constructor.parameters().get(k);
+            ForwardType forwardType = context.newForwardType(pi.parameterizedType());
+            Expression e = parseExpression.parse(context, index, forwardType, ia.get(1 + 2 * k));
             expressions.add(e);
         }
 

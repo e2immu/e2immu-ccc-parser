@@ -9,6 +9,7 @@ import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstapi.type.ParameterizedType;
 import org.e2immu.parserapi.Context;
+import org.e2immu.parserapi.ForwardType;
 import org.parsers.java.Node;
 import org.parsers.java.ast.Identifier;
 import org.parsers.java.ast.Type;
@@ -33,7 +34,8 @@ public class ParseMethodReference extends CommonParse {
             ParameterizedType pt = parseType.parse(context, n0);
             scope = runtime.newTypeExpression(pt, runtime.diamondNo());
         } else {
-            scope = parseExpression.parse(context, index, n0);
+            ForwardType forwardType = context.emptyForwardType();
+            scope = parseExpression.parse(context, index, forwardType, n0);
         }
         MethodInfo methodInfo;
         ParameterizedType concreteReturnType;

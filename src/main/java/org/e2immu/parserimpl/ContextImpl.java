@@ -5,6 +5,7 @@ import org.e2immu.cstapi.info.FieldInfo;
 import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.runtime.Runtime;
+import org.e2immu.cstapi.type.ParameterizedType;
 import org.e2immu.parserapi.*;
 import org.e2immu.resourceapi.TypeMap;
 import org.slf4j.Logger;
@@ -149,5 +150,15 @@ public class ContextImpl implements Context {
     @Override
     public Context newLambdaContext(TypeInfo subType, VariableContext variableContext) {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ForwardType newForwardType(ParameterizedType parameterizedType) {
+        return new ForwardTypeImpl(parameterizedType);
+    }
+
+    @Override
+    public ForwardType emptyForwardType() {
+        return new ForwardTypeImpl();
     }
 }

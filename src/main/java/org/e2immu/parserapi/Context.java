@@ -10,6 +10,7 @@ import org.e2immu.cstapi.type.ParameterizedType;
 import org.e2immu.resourceapi.TypeMap;
 
 public interface Context {
+
     Runtime runtime();
 
     default Info info() {
@@ -62,5 +63,10 @@ public interface Context {
 
     Context newLambdaContext(TypeInfo subType, VariableContext variableContext);
 
+
+    // factory
+
+    ForwardType newForwardType(ParameterizedType parameterizedType);
+    ForwardType emptyForwardType();
 
 }

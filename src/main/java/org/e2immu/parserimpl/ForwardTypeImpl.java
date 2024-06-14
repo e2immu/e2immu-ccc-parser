@@ -5,9 +5,8 @@ import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstapi.type.ParameterizedType;
 import org.e2immu.parserapi.ForwardType;
-import org.e2immu.parserapi.TypeContext;
 
-public record ForwardTypeImpl(ParameterizedType type, boolean erasure, TypeParameterMap extra)
+public record ForwardTypeImpl(ParameterizedType type, boolean mustBeArray, TypeParameterMap extra)
         implements ForwardType {
 
     public ForwardTypeImpl() {
@@ -20,6 +19,11 @@ public record ForwardTypeImpl(ParameterizedType type, boolean erasure, TypeParam
 
     public ForwardTypeImpl(ParameterizedType type, boolean erasure) {
         this(type, erasure, TypeParameterMap.EMPTY);
+    }
+
+    @Override
+    public ForwardType withMustBeArray() {
+        return new ForwardTypeImpl(type, true, extra);
     }
 
     // we'd rather have java.lang.Boolean, because as soon as type parameters are involved, primitives
@@ -49,6 +53,6 @@ public record ForwardTypeImpl(ParameterizedType type, boolean erasure, TypeParam
 
     @Override
     public String toString() {
-        return "[FWD: " + (type == null ? "null" : type.detailedString()) + ", erasure: " + erasure + "]";
+        return "[FWD: " + (type == null ? "null" : type.detailedString()) + ", array? " + mustBeArray + "]";
     }
 }

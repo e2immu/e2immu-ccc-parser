@@ -3,12 +3,14 @@ package org.e2immu.parser.java;
 import org.e2immu.cstapi.element.Comment;
 import org.e2immu.cstapi.element.Source;
 import org.e2immu.cstapi.expression.Expression;
+import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstapi.statement.Block;
 import org.e2immu.cstapi.statement.LocalVariableCreation;
 import org.e2immu.cstapi.type.ParameterizedType;
 import org.e2immu.cstapi.variable.LocalVariable;
 import org.e2immu.parserapi.Context;
+import org.e2immu.parserapi.ForwardType;
 import org.parsers.java.Node;
 import org.parsers.java.Token;
 import org.parsers.java.ast.*;
@@ -51,12 +53,13 @@ public class ParseStatement extends CommonParse {
 
         if (statement instanceof ExpressionStatement es) {
             StatementExpression se = (StatementExpression) es.children().get(0);
-            Expression e = parseExpression.parse(context, index, se.get(0));
+            Expression e = parseExpression.parse(context, index, context.emptyForwardType(), se.get(0));
             return runtime.newExpressionAsStatementBuilder().setExpression(e).setSource(source)
                     .addComments(comments).build();
         }
         if (statement instanceof ReturnStatement rs) {
-            org.e2immu.cstapi.expression.Expression e = parseExpression.parse(context, index, rs.get(1));
+            ForwardType forwardType = context.newForwardType(context.enclosingMethod().returnType());
+            org.e2immu.cstapi.expression.Expression e = parseExpression.parse(context, index, forwardType, rs.get(1));
             assert e != null;
             return runtime.newReturnBuilder()
                     .setExpression(e).setSource(source).addComments(comments)
@@ -68,7 +71,8 @@ public class ParseStatement extends CommonParse {
                 Identifier identifier = (Identifier) vd.get(0);
                 Expression expression;
                 if (vd.size() > 2) {
-                    expression = parseExpression.parse(context, index, vd.get(2));
+                    ForwardType forwardType = context.newForwardType(type);
+                    expression = parseExpression.parse(context, index, forwardType, vd.get(2));
                 } else {
                     expression = runtime.newEmptyExpression();
                 }
@@ -81,7 +85,10 @@ public class ParseStatement extends CommonParse {
         if (statement instanceof EnhancedForStatement enhancedFor) {
             // kw, del, noVarDecl (objectType, vardcl), operator, name (Name), del, code block
             LocalVariableCreation loopVariableCreation;
-            Expression expression = parseExpression.parse(context, index, enhancedFor.get(4));
+            TypeInfo iterable = runtime.getFullyQualified(Iterable.class, false);
+            ForwardType forwardType = iterable == null ? context.emptyForwardType() :
+                    context.newForwardType(iterable.asSimpleParameterizedType());
+            Expression expression = parseExpression.parse(context, index, forwardType, enhancedFor.get(4));
             Context newContext = context.newVariableContext("forEach");
             if (enhancedFor.get(2) instanceof NoVarDeclaration nvd) {
                 loopVariableCreation = (LocalVariableCreation) parse(newContext, index, nvd);
@@ -93,13 +100,15 @@ public class ParseStatement extends CommonParse {
         }
         if (statement instanceof WhileStatement whileStatement) {
             Context newContext = context.newVariableContext("while");
-            Expression expression = parseExpression.parse(context, index, whileStatement.get(2));
+            ForwardType forwardType = context.newForwardType(runtime.booleanParameterizedType());
+            Expression expression = parseExpression.parse(context, index, forwardType, whileStatement.get(2));
             Block block = parseBlockOrStatement(newContext, index + FIRST_BLOCK, whileStatement.get(4));
             return runtime.newWhileBuilder().setExpression(expression).setBlock(block)
                     .setSource(source).addComments(comments).build();
         }
         if (statement instanceof IfStatement ifStatement) {
-            Expression expression = parseExpression.parse(context, index, ifStatement.get(2));
+            ForwardType forwardType = context.newForwardType(runtime.booleanParameterizedType());
+            Expression expression = parseExpression.parse(context, index, forwardType, ifStatement.get(2));
             Node n4 = ifStatement.get(4);
             Context newContext = context.newVariableContext("ifBlock");
             Block block = parseBlockOrStatement(newContext, index + FIRST_BLOCK, n4);

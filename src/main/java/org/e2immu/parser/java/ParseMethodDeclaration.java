@@ -65,7 +65,7 @@ public class ParseMethodDeclaration extends CommonParse {
              delay the parsing of the code-block for a second phase, when all methods are known so that they can
              be resolved
              */
-            context.resolver().add(builder, codeBlock, newContext);
+            context.resolver().add(builder, context.emptyForwardType(), codeBlock, newContext);
         } else {
             builder.setMethodBody(runtime.emptyBlock());
         }

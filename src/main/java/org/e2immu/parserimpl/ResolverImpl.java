@@ -12,6 +12,7 @@ import org.e2immu.parser.java.ParseBlock;
 import org.e2immu.parser.java.ParseExpression;
 import org.e2immu.parser.java.ParseStatement;
 import org.e2immu.parserapi.Context;
+import org.e2immu.parserapi.ForwardType;
 import org.e2immu.parserapi.Resolver;
 import org.parsers.java.Node;
 import org.parsers.java.ast.CodeBlock;
@@ -38,15 +39,15 @@ public class ResolverImpl implements Resolver {
         this.runtime = runtime;
     }
 
-    record Todo(Info.Builder<?> info, Node expression, Context context) {
+    record Todo(Info.Builder<?> infoBuilder, ForwardType forwardType, Node expression, Context context) {
     }
 
     private final List<Todo> todos = new LinkedList<>();
     private final List<TypeInfo.Builder> types = new LinkedList<>();
 
     @Override
-    public void add(Info.Builder<?> info, Node expression, Context context) {
-        todos.add(new Todo(info, expression, context));
+    public void add(Info.Builder<?> infoBuilder, ForwardType forwardType, Node expression, Context context) {
+        todos.add(new Todo(infoBuilder, forwardType, expression, context));
     }
 
     @Override
@@ -61,18 +62,19 @@ public class ResolverImpl implements Resolver {
         LOGGER.info("Start resolving {} type(s), {} field(s)/method(s)", types.size(), todos.size());
 
         for (Todo todo : todos) {
-            if (todo.info instanceof FieldInfo.Builder builder) {
-                org.e2immu.cstapi.expression.Expression e = parseExpression.parse(todo.context, START_INDEX, todo.expression);
+            if (todo.infoBuilder instanceof FieldInfo.Builder builder) {
+                org.e2immu.cstapi.expression.Expression e = parseExpression.parse(todo.context, START_INDEX,
+                        todo.forwardType, todo.expression);
                 builder.setInitializer(e);
                 builder.commit();
-            } else if (todo.info instanceof MethodInfo.Builder builder) {
+            } else if (todo.infoBuilder instanceof MethodInfo.Builder builder) {
                 Element e;
                 if (todo.expression instanceof ExpressionStatement est) {
                     e = parseStatement.parse(todo.context, START_INDEX, est);
                 } else if (todo.expression instanceof CodeBlock codeBlock) {
                     e = parseBlock.parse(todo.context, START_INDEX, codeBlock);
                 } else {
-                    e = parseExpression.parse(todo.context, START_INDEX, todo.expression);
+                    e = parseExpression.parse(todo.context, START_INDEX, todo.forwardType, todo.expression);
                 }
                 if (e instanceof Block b) {
                     builder.setMethodBody(b);

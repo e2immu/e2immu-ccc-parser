@@ -13,6 +13,7 @@ import org.e2immu.cstapi.statement.Statement;
 import org.e2immu.cstapi.type.NamedType;
 import org.e2immu.cstapi.type.ParameterizedType;
 import org.e2immu.parserapi.Context;
+import org.e2immu.parserapi.ForwardType;
 import org.parsers.java.ast.Identifier;
 import org.parsers.java.ast.LambdaExpression;
 import org.parsers.java.ast.LambdaLHS;
@@ -28,60 +29,56 @@ public class ParseLambdaExpression extends CommonParse {
         this.parseExpression = parseExpression;
     }
 
-    private record NameType(String name, ParameterizedType type) {
-    }
-
     public Expression parse(Context context,
                             List<Comment> comments,
                             Source source,
                             String index,
+                            ForwardType forwardType,
                             LambdaExpression le) {
         Lambda.Builder builder = runtime.newLambdaBuilder();
-        List<NameType> params = new ArrayList<>();
 
         Context newContext = context.newVariableContext("lambda");
         List<Lambda.OutputVariant> outputVariants = new ArrayList<>();
 
-        if (le.get(0) instanceof LambdaLHS lhs) {
-            if (lhs.get(0) instanceof Identifier identifier) {
-                // single variable
-                params.add(new NameType(identifier.getSource(), null));
-                outputVariants.add(runtime.lambdaOutputVariantEmpty());
-            } else throw new UnsupportedOperationException();
-
-        } else throw new UnsupportedOperationException();
-
-
         int typeIndex = context.anonymousTypeCounters().newIndex(context.enclosingType());
         TypeInfo anonymousType = runtime.newAnonymousType(context.enclosingType(), typeIndex);
 
-        String samName = "?";
-        List<ParameterizedType> typesOfSamParameters = new ArrayList<>();
+        MethodInfo sam = forwardType.type().bestTypeInfo().singleAbstractMethod();
+        MethodInfo methodInfo = runtime.newMethod(anonymousType, sam.name(), runtime.methodTypeMethod());
+        MethodInfo.Builder miBuilder = methodInfo.builder();
+
+        if (le.get(0) instanceof LambdaLHS lhs) {
+            if (lhs.get(0) instanceof Identifier identifier) {
+                // single variable, no type given. we must extract it from the forward type, which must be a functional interface
+                ParameterizedType type = sam.parameters().get(0).parameterizedType();
+                ParameterInfo pi = miBuilder.addParameter("p0", type);
+                outputVariants.add(runtime.lambdaOutputVariantEmpty());
+                pi.builder().commit();
+                context.variableContext().add(pi);
+            } else throw new UnsupportedOperationException();
+        } else throw new UnsupportedOperationException();
+
+
         ParameterizedType concreteReturnType;
         Block methodBody;
         if (le.get(1) instanceof org.parsers.java.ast.Expression e) {
             // simple function or supplier
-            Expression expression = parseExpression.parse(newContext, index, e);
+            ForwardType fwd = context.emptyForwardType();
+            Expression expression = parseExpression.parse(newContext, index, fwd, e);
             concreteReturnType = expression.parameterizedType();
             Statement returnStatement = runtime.newReturnStatement(expression);
             methodBody = runtime.newBlockBuilder().addStatement(returnStatement).build();
             // returns either java.util.function.Function<T,R> or java.util.function.Supplier<R>
-            TypeInfo abstractFunctionalType = runtime.syntheticFunctionalType(params.size(), true);
-            for (NameType nameType : params) {
-                // add type parameter
-            }
-           // anonymousType.builder().addInterfaceImplemented(interfaceImplemented);
+            TypeInfo abstractFunctionalType = runtime.syntheticFunctionalType(methodInfo.parameters().size(), true);
+
+            // anonymousType.builder().addInterfaceImplemented(interfaceImplemented);
         } else throw new UnsupportedOperationException();
 
-        MethodInfo methodInfo = runtime.newMethod(anonymousType, samName, runtime.methodTypeMethod());
-        MethodInfo.Builder miBuilder = methodInfo.builder();
+
         miBuilder.setAccess(runtime.accessPrivate());
         miBuilder.setSynthetic(true);
         miBuilder.setMethodBody(methodBody);
         miBuilder.setReturnType(concreteReturnType);
-        for (int i = 0; i < typesOfSamParameters.size(); i++) {
-            miBuilder.addParameter("p" + i, typesOfSamParameters.get(i)).builder().commit();
-        }
         miBuilder.commit();
         anonymousType.builder().addMethod(methodInfo);
         anonymousType.builder().commit();
