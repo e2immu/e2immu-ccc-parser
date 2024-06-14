@@ -1,5 +1,6 @@
 package org.e2immu.parser.java;
 
+import org.e2immu.cstapi.expression.Lambda;
 import org.e2immu.cstapi.expression.MethodReference;
 import org.e2immu.cstapi.expression.TypeExpression;
 import org.e2immu.cstapi.info.MethodInfo;
@@ -10,18 +11,16 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class TestParseMethodReference extends CommonTestParse {
+public class TestParseLambda extends CommonTestParse {
 
     @Language("java")
     private static final String INPUT = """
             package a.b;
             import java.util.function.Function;
             class C {
-              interface I {
-                 String map(C c);
-              }
+              String s;
               Function<C, String> mapper() {
-                 return I::map;
+                 return t -> t+s;
               }
             }
             """;
@@ -29,19 +28,11 @@ public class TestParseMethodReference extends CommonTestParse {
     @Test
     public void test() {
         TypeInfo typeInfo = parse(INPUT);
-        TypeInfo i = typeInfo.findSubType("I");
-        assertSame(typeInfo, i.primaryType());
-        MethodInfo map = i.findUniqueMethod("map", 1);
-        assertSame(map, i.singleAbstractMethod());
-
         MethodInfo mapper = typeInfo.findUniqueMethod("mapper", 0);
         if (mapper.methodBody().statements().get(0) instanceof ReturnStatement rs
-            && rs.expression() instanceof MethodReference mr) {
-            assertEquals("I::map", mr.toString());
-            if (mr.scope() instanceof TypeExpression te) {
-                assertSame(i, te.parameterizedType().typeInfo());
-            } else fail();
-            assertSame(map, mr.methodInfo());
+            && rs.expression() instanceof Lambda lambda) {
+            assertEquals("I::map", lambda.toString());
+
         } else fail();
     }
 }

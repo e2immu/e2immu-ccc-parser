@@ -18,13 +18,40 @@ import java.util.List;
 
 public class CommonTestParse {
 
-    protected final Runtime runtime = new RuntimeImpl();
+    private TypeInfo predefined(String fullyQualifiedName) {
+        return switch (fullyQualifiedName) {
+            case "java.lang.Class" -> clazz;
+            case "java.lang.String" -> runtime.stringTypeInfo();
+            case "java.lang.Integer" -> runtime.integerTypeInfo();
+            case "java.lang.System" -> system;
+            case "java.lang.Math" -> math;
+            case "java.lang.Exception" -> exception;
+            case "java.io.PrintStream" -> printStream;
+            case "java.util.function.Function" -> function;
+            default -> throw new UnsupportedOperationException("Type " + fullyQualifiedName);
+        };
+    }
+
+    protected final Runtime runtime = new RuntimeImpl() {
+        @Override
+        public TypeInfo getFullyQualified(String name, boolean complain) {
+            return predefined(name);
+        }
+
+        @Override
+        public TypeInfo syntheticFunctionalType(int inputParameters, boolean hasReturnValue) {
+            if (inputParameters == 1 && hasReturnValue) return function;
+            throw new UnsupportedOperationException();
+        }
+    };
+
     protected final TypeInfo clazz;
     protected final TypeInfo math;
     protected final TypeInfo system;
     protected final TypeInfo exception;
     protected final TypeInfo printStream;
     protected final TypeInfo function;
+
 
     class TypeMapBuilder implements TypeMap.Builder {
 
@@ -45,17 +72,7 @@ public class CommonTestParse {
 
         @Override
         public TypeInfo get(String fullyQualifiedName) {
-            return switch (fullyQualifiedName) {
-                case "java.lang.Class" -> clazz;
-                case "java.lang.String" -> runtime.stringTypeInfo();
-                case "java.lang.Integer" -> runtime.integerTypeInfo();
-                case "java.lang.System" -> system;
-                case "java.lang.Math" -> math;
-                case "java.lang.Exception" -> exception;
-                case "java.io.PrintStream" -> printStream;
-                case "java.util.function.Function" -> function;
-                default -> throw new UnsupportedOperationException("Type " + fullyQualifiedName);
-            };
+            return runtime.getFullyQualified(fullyQualifiedName, true);
         }
 
         @Override

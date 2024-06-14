@@ -163,7 +163,8 @@ public class ParseTypeDeclaration extends CommonParse {
             }
         } else throw new UnsupportedOperationException("node " + td.get(i).getClass());
 
-        // finally we do the fields
+        MethodInfo sam = runtime.computeMethodOverrides().computeFunctionalInterface(typeInfo);
+        builder.setSingleAbstractMethod(sam);
 
         context.resolver().add(builder);
         return typeInfo;

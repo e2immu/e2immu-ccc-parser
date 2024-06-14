@@ -28,6 +28,7 @@ public class ParseExpression extends CommonParse {
     private final ParseMethodCall parseMethodCall;
     private final ParseMethodReference parseMethodReference;
     private final ParseConstructorCall parseConstructorCall;
+    private final ParseLambdaExpression parseLambdaExpression;
     private final ParseType parseType;
 
     public ParseExpression(Runtime runtime) {
@@ -36,6 +37,7 @@ public class ParseExpression extends CommonParse {
         parseMethodCall = new ParseMethodCall(runtime, this);
         parseConstructorCall = new ParseConstructorCall(runtime, this);
         parseMethodReference = new ParseMethodReference(runtime, this, parseType);
+        parseLambdaExpression = new ParseLambdaExpression(runtime, this);
     }
 
     public Expression parse(Context context, String index, Node node) {
@@ -110,6 +112,9 @@ public class ParseExpression extends CommonParse {
         }
         if(node instanceof MethodReference mr) {
            return parseMethodReference.parse(context, comments, source, index, mr);
+        }
+        if(node instanceof LambdaExpression le) {
+            return parseLambdaExpression.parse(context, comments, source, index, le);
         }
         if (node instanceof PostfixExpression pfe) {
             Expression target = parse(context, index, pfe.get(0));
