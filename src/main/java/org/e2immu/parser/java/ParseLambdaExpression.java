@@ -50,7 +50,7 @@ public class ParseLambdaExpression extends CommonParse {
         if (le.get(0) instanceof LambdaLHS lhs) {
             if (lhs.get(0) instanceof Identifier identifier) {
                 // single variable, no type given. we must extract it from the forward type, which must be a functional interface
-                ParameterizedType type = sam.parameters().get(0).parameterizedType();
+                ParameterizedType type = forwardType.type().parameters().get(0);
                 String parameterName = identifier.getSource();
                 ParameterInfo pi = miBuilder.addParameter(parameterName, type);
                 outputVariants.add(runtime.lambdaOutputVariantEmpty());
@@ -77,6 +77,7 @@ public class ParseLambdaExpression extends CommonParse {
             }
             concreteFtParams.add(concreteReturnType);
             ParameterizedType concreteFunctionalType = runtime.newParameterizedType(abstractFunctionalType, concreteFtParams);
+            // new we have  "class $1 implements Function<Integer, String>"
             anonymousType.builder().addInterfaceImplemented(concreteFunctionalType);
         } else throw new UnsupportedOperationException();
 

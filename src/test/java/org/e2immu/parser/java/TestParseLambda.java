@@ -19,8 +19,9 @@ public class TestParseLambda extends CommonTestParse {
             import java.util.function.Function;
             class C {
               String s;
-              Function<C, String> mapper() {
-                 return t -> t+s;
+              Function<C, String> mapper(int k) {
+                 int lv = k*2;
+                 return t -> t+s+k+lv;
               }
             }
             """;
@@ -28,13 +29,16 @@ public class TestParseLambda extends CommonTestParse {
     @Test
     public void test() {
         TypeInfo typeInfo = parse(INPUT);
-        MethodInfo mapper = typeInfo.findUniqueMethod("mapper", 0);
-        if (mapper.methodBody().statements().get(0) instanceof ReturnStatement rs
+        MethodInfo mapper = typeInfo.findUniqueMethod("mapper", 1);
+        assertEquals("Function<C,String>", mapper.returnType().toString());
+        if (mapper.methodBody().statements().get(1) instanceof ReturnStatement rs
             && rs.expression() instanceof Lambda lambda) {
-            assertEquals("t->t+this.s", lambda.toString());
-            assertEquals("a.b.C.$1.apply(R)", lambda.methodInfo().fullyQualifiedName());
+            assertEquals("t->t+this.s+k+lv", lambda.toString());
+            assertEquals("a.b.C.$1.apply(C)", lambda.methodInfo().fullyQualifiedName());
+            assertEquals("String", lambda.methodInfo().returnType().toString());
+            assertEquals("String", lambda.concreteReturnType().toString());
             assertEquals(2, lambda.concreteFunctionalType().parameters().size());
-            assertEquals("Function<Integer,String>", lambda.concreteFunctionalType().toString());
+            assertEquals("Function<C,String>", lambda.concreteFunctionalType().toString());
         } else fail();
     }
 }

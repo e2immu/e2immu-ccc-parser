@@ -105,7 +105,7 @@ public class CommonTestParse {
         MethodInfo apply = runtime.newMethod(function, "apply", runtime.methodTypeAbstractMethod());
         apply.builder().setReturnType(runtime.newParameterizedType(R, 0, null))
                 .addMethodModifier(runtime.methodModifierPublic())
-                .addParameter("t", runtime.newParameterizedType(R, 0, null));
+                .addParameter("t", runtime.newParameterizedType(T, 0, null));
         apply.builder().computeAccess();
         apply.builder().commit();
         function.builder().addMethod(apply).addTypeModifier(runtime.typeModifierPublic())

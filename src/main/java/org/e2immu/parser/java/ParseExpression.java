@@ -211,61 +211,64 @@ public class ParseExpression extends CommonParse {
         if (token.equals(MINUS)) {
             forwardType = context.newForwardType(runtime.intParameterizedType());
         } else {
-            // for plus, we could have either string, or int
+            // for plus, we could have either string, or int; with string, all bets are off
             forwardType = context.emptyForwardType();
         }
-        Expression lhs = parse(context, index, forwardType, ae.get(0));
-        // but maybe we can already learn something from the lhs
-        ForwardType forwardType2;
-        if (lhs.parameterizedType().isJavaLangString()) {
-            forwardType2 = context.newForwardType(runtime.stringParameterizedType());
-        } else {
-            forwardType2 = context.newForwardType(runtime.intParameterizedType());
+        Expression accumulated = parse(context, index, forwardType, ae.get(0));
+        int i = 2;
+        while (i < ae.size()) {
+            Expression rhs = parse(context, index, forwardType, ae.get(i));
+            MethodInfo operator;
+            if (token.equals(PLUS)) {
+                operator = runtime.plusOperatorInt();
+            } else if (token.equals(MINUS)) {
+                operator = runtime.minusOperatorInt();
+            } else {
+                throw new UnsupportedOperationException();
+            }
+            ParameterizedType pt = runtime.widestType(accumulated.parameterizedType(), rhs.parameterizedType());
+            accumulated = runtime.newBinaryOperatorBuilder()
+                    .setOperator(operator)
+                    .setLhs(accumulated).setRhs(rhs)
+                    .setParameterizedType(pt)
+                    .setPrecedence(runtime.precedenceAdditive())
+                    .setSource(source(context.info(), index, ae))
+                    .addComments(comments(ae))
+                    .build();
+            i += 2;
         }
-        Expression rhs = parse(context, index, forwardType2, ae.get(2));
-        MethodInfo operator;
-        if (token.equals(PLUS)) {
-            operator = runtime.plusOperatorInt();
-        } else if (token.equals(MINUS)) {
-            operator = runtime.minusOperatorInt();
-        } else {
-            throw new UnsupportedOperationException();
-        }
-        ParameterizedType pt = runtime.widestType(lhs.parameterizedType(), rhs.parameterizedType());
-        return runtime.newBinaryOperatorBuilder()
-                .setOperator(operator)
-                .setLhs(lhs).setRhs(rhs)
-                .setParameterizedType(pt)
-                .setPrecedence(runtime.precedenceAdditive())
-                .setSource(source(context.info(), index, ae))
-                .addComments(comments(ae))
-                .build();
+        return accumulated;
     }
 
     private Expression parseMultiplicative(Context context, String index, MultiplicativeExpression me) {
         ForwardType fwd = context.newForwardType(runtime.intParameterizedType());
-        Expression lhs = parse(context, index, fwd, me.get(0));
-        Expression rhs = parse(context, index, fwd, me.get(2));
-        Node.NodeType token = me.get(1).getType();
-        MethodInfo operator;
-        if (token.equals(STAR)) {
-            operator = runtime.multiplyOperatorInt();
-        } else if (token.equals(SLASH)) {
-            operator = runtime.divideOperatorInt();
-        } else if (token.equals(REM)) {
-            operator = runtime.remainderOperatorInt();
-        } else {
-            throw new UnsupportedOperationException();
+        Expression accumulated = parse(context, index, fwd, me.get(0));
+        int i = 2;
+        while (i < me.size()) {
+            Expression rhs = parse(context, index, fwd, me.get(i));
+            Node.NodeType token = me.get(1).getType();
+            MethodInfo operator;
+            if (token.equals(STAR)) {
+                operator = runtime.multiplyOperatorInt();
+            } else if (token.equals(SLASH)) {
+                operator = runtime.divideOperatorInt();
+            } else if (token.equals(REM)) {
+                operator = runtime.remainderOperatorInt();
+            } else {
+                throw new UnsupportedOperationException();
+            }
+            ParameterizedType pt = runtime.widestType(accumulated.parameterizedType(), rhs.parameterizedType());
+            accumulated = runtime.newBinaryOperatorBuilder()
+                    .setOperator(operator)
+                    .setLhs(accumulated).setRhs(rhs)
+                    .setParameterizedType(pt)
+                    .setPrecedence(runtime.precedenceMultiplicative())
+                    .setSource(source(context.info(), index, me))
+                    .addComments(comments(me))
+                    .build();
+            i++;
         }
-        ParameterizedType pt = runtime.widestType(lhs.parameterizedType(), rhs.parameterizedType());
-        return runtime.newBinaryOperatorBuilder()
-                .setOperator(operator)
-                .setLhs(lhs).setRhs(rhs)
-                .setParameterizedType(pt)
-                .setPrecedence(runtime.precedenceMultiplicative())
-                .setSource(source(context.info(), index, me))
-                .addComments(comments(me))
-                .build();
+        return accumulated;
     }
 
     private Expression parseRelational(Context context, String index, RelationalExpression re) {
