@@ -24,6 +24,7 @@ public class CommonTestParse {
             case "java.lang.Class" -> clazz;
             case "java.lang.String" -> runtime.stringTypeInfo();
             case "java.lang.Integer" -> runtime.integerTypeInfo();
+            case "java.lang.SuppressWarnings" -> suppressWarnings;
             case "java.lang.System" -> system;
             case "java.lang.Math" -> math;
             case "java.lang.Exception" -> exception;
@@ -55,7 +56,7 @@ public class CommonTestParse {
     protected final TypeInfo exception;
     protected final TypeInfo printStream;
     protected final TypeInfo function;
-
+    protected final TypeInfo suppressWarnings;
 
     class TypeMapBuilder implements TypeMap.Builder {
 
@@ -90,6 +91,7 @@ public class CommonTestParse {
         CompilationUnit javaIo = runtime.newCompilationUnitBuilder().setPackageName("java.io").build();
         CompilationUnit javaUtilFunction = runtime.newCompilationUnitBuilder().setPackageName("java.util.function").build();
 
+        suppressWarnings = runtime.newTypeInfo(javaLang, "SuppressWarnings");
         clazz = runtime.newTypeInfo(javaLang, "Class");
         math = runtime.newTypeInfo(javaLang, "Math");
         printStream = runtime.newTypeInfo(javaIo, "PrintStream");

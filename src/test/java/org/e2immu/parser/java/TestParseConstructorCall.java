@@ -3,7 +3,6 @@ package org.e2immu.parser.java;
 import org.e2immu.cstapi.expression.ConstructorCall;
 import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.info.TypeInfo;
-import org.e2immu.cstapi.statement.ExpressionAsStatement;
 import org.e2immu.cstapi.statement.LocalVariableCreation;
 import org.e2immu.cstapi.type.ParameterizedType;
 import org.intellij.lang.annotations.Language;

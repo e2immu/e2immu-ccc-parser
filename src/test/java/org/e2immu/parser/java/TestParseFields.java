@@ -1,13 +1,16 @@
 package org.e2immu.parser.java;
 
-import org.e2immu.cstapi.expression.*;
-import org.e2immu.cstapi.info.*;
+import org.e2immu.cstapi.expression.BinaryOperator;
+import org.e2immu.cstapi.expression.CharConstant;
+import org.e2immu.cstapi.expression.Expression;
+import org.e2immu.cstapi.expression.VariableExpression;
+import org.e2immu.cstapi.info.FieldInfo;
+import org.e2immu.cstapi.info.FieldModifier;
+import org.e2immu.cstapi.info.MethodInfo;
+import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.statement.Block;
-import org.e2immu.cstapi.statement.LocalVariableCreation;
 import org.e2immu.cstapi.statement.ReturnStatement;
-import org.e2immu.cstapi.type.ParameterizedType;
 import org.e2immu.cstapi.variable.FieldReference;
-import org.e2immu.cstapi.variable.LocalVariable;
 import org.e2immu.cstapi.variable.This;
 import org.e2immu.cstimpl.element.MultiLineComment;
 import org.intellij.lang.annotations.Language;

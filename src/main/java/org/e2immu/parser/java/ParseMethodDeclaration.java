@@ -1,5 +1,6 @@
 package org.e2immu.parser.java;
 
+import org.e2immu.cstapi.expression.AnnotationExpression;
 import org.e2immu.cstapi.info.*;
 import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstapi.type.ParameterizedType;
@@ -13,24 +14,34 @@ import java.util.List;
 
 public class ParseMethodDeclaration extends CommonParse {
     private final ParseType parseType;
+    private final ParseAnnotationExpression parseAnnotationExpression;
 
     public ParseMethodDeclaration(Runtime runtime) {
         super(runtime);
         parseType = new ParseType(runtime);
+        parseAnnotationExpression = new ParseAnnotationExpression(runtime);
     }
 
     public MethodInfo parse(Context context, MethodDeclaration md) {
         int i = 0;
+        List<AnnotationExpression> annotations = new ArrayList<>();
         List<MethodModifier> methodModifiers = new ArrayList<>();
-        if (md.get(i) instanceof Modifiers modifiers) {
-            for (Node node : modifiers.children()) {
-                if (node instanceof KeyWord keyWord) {
-                    methodModifiers.add(modifier(keyWord));
+
+        Node mdi;
+        while (!((mdi = md.get(i)) instanceof ReturnType)) {
+            if (mdi instanceof Annotation a) {
+                annotations.add(parseAnnotationExpression.parse(context, a));
+            } else if (mdi instanceof Modifiers modifiers) {
+                for (Node node : modifiers.children()) {
+                    if (node instanceof MarkerAnnotation a) {
+                        annotations.add(parseAnnotationExpression.parse(context, a));
+                    } else if (node instanceof KeyWord keyWord) {
+                        methodModifiers.add(modifier(keyWord));
+                    }
                 }
+            } else if (mdi instanceof KeyWord keyWord) {
+                methodModifiers.add(modifier(keyWord));
             }
-            i++;
-        } else if (md.get(i) instanceof KeyWord keyWord) {
-            methodModifiers.add(modifier(keyWord));
             i++;
         }
 
@@ -76,6 +87,7 @@ public class ParseMethodDeclaration extends CommonParse {
         builder.setAccess(accessCombined);
         builder.addComments(comments(md));
         builder.setSource(source(methodInfo, null, md));
+        builder.addAnnotations(annotations);
         return methodInfo;
     }
 

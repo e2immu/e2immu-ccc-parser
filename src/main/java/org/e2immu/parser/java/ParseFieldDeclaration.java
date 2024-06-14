@@ -1,5 +1,6 @@
 package org.e2immu.parser.java;
 
+import org.e2immu.cstapi.expression.AnnotationExpression;
 import org.e2immu.cstapi.expression.VariableExpression;
 import org.e2immu.cstapi.info.Access;
 import org.e2immu.cstapi.info.FieldInfo;
@@ -18,24 +19,33 @@ import java.util.List;
 
 public class ParseFieldDeclaration extends CommonParse {
     private final ParseType parseType;
+    private final ParseAnnotationExpression parseAnnotationExpression;
 
     public ParseFieldDeclaration(Runtime runtime) {
         super(runtime);
         parseType = new ParseType(runtime);
+        parseAnnotationExpression = new ParseAnnotationExpression(runtime);
     }
 
     public FieldInfo parse(Context context, FieldDeclaration fd) {
         int i = 0;
+        List<AnnotationExpression> annotations = new ArrayList<>();
         List<FieldModifier> fieldModifiers = new ArrayList<>();
-        if (fd.get(i) instanceof Modifiers modifiers) {
-            for (Node node : modifiers.children()) {
-                if (node instanceof KeyWord keyWord) {
-                    fieldModifiers.add(modifier(keyWord));
+        Node fdi;
+        while (!((fdi = fd.get(i)) instanceof Type)) {
+            if (fdi instanceof Annotation a) {
+                annotations.add(parseAnnotationExpression.parse(context, a));
+            } else if (fdi instanceof Modifiers modifiers) {
+                for (Node node : modifiers.children()) {
+                    if (node instanceof MarkerAnnotation a) {
+                        annotations.add(parseAnnotationExpression.parse(context, a));
+                    } else if (node instanceof KeyWord keyWord) {
+                        fieldModifiers.add(modifier(keyWord));
+                    }
                 }
+            } else if (fd.get(i) instanceof KeyWord keyWord) {
+                fieldModifiers.add(modifier(keyWord));
             }
-            i++;
-        } else if (fd.get(i) instanceof KeyWord keyWord) {
-            fieldModifiers.add(modifier(keyWord));
             i++;
         }
         boolean isStatic = fieldModifiers.stream().anyMatch(FieldModifier::isStatic);
@@ -67,6 +77,7 @@ public class ParseFieldDeclaration extends CommonParse {
         builder.setAccess(accessCombined);
         builder.setSource(source(fieldInfo, null, fd));
         builder.addComments(comments(fd));
+        builder.addAnnotations(annotations);
 
         fieldModifiers.forEach(builder::addFieldModifier);
         VariableExpression scope = runtime.newVariableExpression(runtime.newThis(fieldInfo.owner()));

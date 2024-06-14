@@ -4,7 +4,6 @@ import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.type.ParameterizedType;
 import org.e2immu.cstapi.type.TypeParameter;
-import org.e2immu.cstimpl.element.SourceImpl;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
 

@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class TestParseAnnotation extends CommonTestParse {
+public class TestParseAnnotationDeclaration extends CommonTestParse {
 
     @Language("java")
     private static final String INPUT = """

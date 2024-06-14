@@ -2,6 +2,7 @@ package org.e2immu.parser.java;
 
 import org.e2immu.cstapi.element.Comment;
 import org.e2immu.cstapi.element.CompilationUnit;
+import org.e2immu.cstapi.expression.AnnotationExpression;
 import org.e2immu.cstapi.info.*;
 import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstapi.type.ParameterizedType;
@@ -22,6 +23,7 @@ public class ParseTypeDeclaration extends CommonParse {
     private final ParseMethodDeclaration parseMethodDeclaration;
     private final ParseAnnotationMethodDeclaration parseAnnotationMethodDeclaration;
     private final ParseFieldDeclaration parseFieldDeclaration;
+    private final ParseAnnotationExpression parseAnnotationExpression;
     private final ParseType parseType;
 
     public ParseTypeDeclaration(Runtime runtime) {
@@ -31,6 +33,7 @@ public class ParseTypeDeclaration extends CommonParse {
         parseFieldDeclaration = new ParseFieldDeclaration(runtime);
         parseConstructorDeclaration = new ParseConstructorDeclaration(runtime);
         parseType = new ParseType(runtime);
+        parseAnnotationExpression = new ParseAnnotationExpression(runtime);
     }
 
     public TypeInfo parse(Context context,
@@ -39,27 +42,32 @@ public class ParseTypeDeclaration extends CommonParse {
         List<Comment> comments = comments(td);
 
         int i = 0;
+        List<AnnotationExpression> annotations = new ArrayList<>();
         TypeNature typeNature = null;
         List<TypeModifier> typeModifiers = new ArrayList<>();
-        if (td.get(i) instanceof Modifiers modifiers) {
-            for (Node node : modifiers.children()) {
-                if (node instanceof KeyWord keyWord) {
-                    typeModifiers.add(getTypeModifier(keyWord.getType()));
+        Node tdi;
+        while (!((tdi = td.get(i)) instanceof Identifier)) {
+            if (tdi instanceof Annotation a) {
+                annotations.add(parseAnnotationExpression.parse(context, a));
+            } else if (tdi instanceof Modifiers modifiers) {
+                for (Node node : modifiers.children()) {
+                    if (node instanceof MarkerAnnotation a) {
+                        annotations.add(parseAnnotationExpression.parse(context, a));
+                    } else if (node instanceof KeyWord keyWord) {
+                        typeModifiers.add(getTypeModifier(keyWord.getType()));
+                    }
+                }
+            }
+            if (tdi instanceof KeyWord keyWord) {
+                TypeModifier tm = getTypeModifier(keyWord.getType());
+                if (tm != null) typeModifiers.add(tm);
+                TypeNature tn = getTypeNature(td, keyWord.getType());
+                if (tn != null) {
+                    assert typeNature == null;
+                    typeNature = tn;
                 }
             }
             i++;
-        }
-        while (td.get(i) instanceof Delimiter) i++; // @ in @interface
-        while (td.get(i) instanceof KeyWord keyWord) {
-            TypeModifier tm = getTypeModifier(keyWord.getType());
-            if (tm != null) typeModifiers.add(tm);
-            TypeNature tn = getTypeNature(td, keyWord.getType());
-            if (tn != null) {
-                assert typeNature == null;
-                typeNature = tn;
-            }
-            i++;
-            while (td.get(i) instanceof Delimiter) i++; // @ in @interface
         }
         if (typeNature == null) throw new UnsupportedOperationException("Have not determined type nature");
         String simpleName;
@@ -76,6 +84,7 @@ public class ParseTypeDeclaration extends CommonParse {
         TypeInfo.Builder builder = typeInfo.builder();
         builder.addComments(comments);
         typeModifiers.forEach(builder::addTypeModifier);
+        builder.addAnnotations(annotations);
         builder.computeAccess();
         builder.setTypeNature(typeNature);
         builder.setSource(source(typeInfo, null, td));

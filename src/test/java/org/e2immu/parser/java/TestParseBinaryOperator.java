@@ -7,7 +7,7 @@ import org.e2immu.cstapi.statement.ReturnStatement;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class TestParseBinaryOperator extends CommonTestParse {
 
