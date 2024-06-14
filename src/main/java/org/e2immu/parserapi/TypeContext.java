@@ -2,11 +2,14 @@ package org.e2immu.parserapi;
 
 import org.e2immu.annotation.NotNull;
 import org.e2immu.cstapi.element.CompilationUnit;
+import org.e2immu.cstapi.element.ImportStatement;
 import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.type.NamedType;
 import org.e2immu.resourceapi.TypeMap;
 
 public interface TypeContext {
+    void addToImportMap(ImportStatement importStatement);
+
     TypeMap.Builder typeMap();
 
     ImportMap importMap();

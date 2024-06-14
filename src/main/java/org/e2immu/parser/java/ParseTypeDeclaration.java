@@ -129,6 +129,7 @@ public class ParseTypeDeclaration extends CommonParse {
             for (TypeDeclaration typeDeclaration : typeDeclarations) {
                 TypeInfo subTypeInfo = parse(newContext, Either.right(typeInfo), typeDeclaration);
                 builder.addSubType(subTypeInfo);
+                newContext.typeContext().addToContext(subTypeInfo);
             }
 
             // THEN, all sorts of methods and constructors

@@ -2,6 +2,7 @@ package org.e2immu.parserimpl;
 
 import org.e2immu.annotation.NotNull;
 import org.e2immu.cstapi.element.CompilationUnit;
+import org.e2immu.cstapi.element.ImportStatement;
 import org.e2immu.cstapi.info.FieldInfo;
 import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.runtime.Runtime;
@@ -38,6 +39,18 @@ public class TypeContextImpl implements TypeContext {
         this.importMap = parentContext.importMap();
         this.compilationUnit = parentContext.compilationUnit();
         this.parentContext = (TypeContextImpl) parentContext;
+    }
+
+    @Override
+    public void addToImportMap(ImportStatement importStatement) {
+        String fqn = importStatement.importString();
+        if (fqn.endsWith(".*")) {
+            throw new UnsupportedOperationException("NYI");
+        } else {
+            TypeInfo typeInfo = typeMap().get(fqn);
+            importMap.putTypeMap(fqn, typeInfo, false, true);
+            addToContext(typeInfo);
+        }
     }
 
     @Override

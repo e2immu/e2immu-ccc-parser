@@ -24,6 +24,7 @@ public class CommonTestParse {
     protected final TypeInfo system;
     protected final TypeInfo exception;
     protected final TypeInfo printStream;
+    protected final TypeInfo function;
 
     class TypeMapBuilder implements TypeMap.Builder {
 
@@ -45,13 +46,14 @@ public class CommonTestParse {
         @Override
         public TypeInfo get(String fullyQualifiedName) {
             return switch (fullyQualifiedName) {
-                case "java.lang.Class"-> clazz;
+                case "java.lang.Class" -> clazz;
                 case "java.lang.String" -> runtime.stringTypeInfo();
                 case "java.lang.Integer" -> runtime.integerTypeInfo();
                 case "java.lang.System" -> system;
                 case "java.lang.Math" -> math;
                 case "java.lang.Exception" -> exception;
                 case "java.io.PrintStream" -> printStream;
+                case "java.util.function.Function" -> function;
                 default -> throw new UnsupportedOperationException("Type " + fullyQualifiedName);
             };
         }
@@ -65,12 +67,14 @@ public class CommonTestParse {
     protected CommonTestParse() {
         CompilationUnit javaLang = runtime.newCompilationUnitBuilder().setPackageName("java.lang").build();
         CompilationUnit javaIo = runtime.newCompilationUnitBuilder().setPackageName("java.io").build();
+        CompilationUnit javaUtilFunction = runtime.newCompilationUnitBuilder().setPackageName("java.util.function").build();
 
         clazz = runtime.newTypeInfo(javaLang, "Class");
         math = runtime.newTypeInfo(javaLang, "Math");
         printStream = runtime.newTypeInfo(javaIo, "PrintStream");
         system = runtime.newTypeInfo(javaLang, "System");
         exception = runtime.newTypeInfo(javaLang, "Exception");
+        function = runtime.newTypeInfo(javaUtilFunction, "Function");
 
         clazz.builder().addTypeParameter(runtime.newTypeParameter(0, "C", clazz));
 
