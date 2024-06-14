@@ -51,10 +51,11 @@ public class ParseLambdaExpression extends CommonParse {
             if (lhs.get(0) instanceof Identifier identifier) {
                 // single variable, no type given. we must extract it from the forward type, which must be a functional interface
                 ParameterizedType type = sam.parameters().get(0).parameterizedType();
-                ParameterInfo pi = miBuilder.addParameter("p0", type);
+                String parameterName = identifier.getSource();
+                ParameterInfo pi = miBuilder.addParameter(parameterName, type);
                 outputVariants.add(runtime.lambdaOutputVariantEmpty());
                 pi.builder().commit();
-                context.variableContext().add(pi);
+                newContext.variableContext().add(pi);
             } else throw new UnsupportedOperationException();
         } else throw new UnsupportedOperationException();
 
@@ -63,15 +64,20 @@ public class ParseLambdaExpression extends CommonParse {
         Block methodBody;
         if (le.get(1) instanceof org.parsers.java.ast.Expression e) {
             // simple function or supplier
-            ForwardType fwd = context.emptyForwardType();
+            ForwardType fwd = newContext.emptyForwardType();
             Expression expression = parseExpression.parse(newContext, index, fwd, e);
             concreteReturnType = expression.parameterizedType();
             Statement returnStatement = runtime.newReturnStatement(expression);
             methodBody = runtime.newBlockBuilder().addStatement(returnStatement).build();
             // returns either java.util.function.Function<T,R> or java.util.function.Supplier<R>
             TypeInfo abstractFunctionalType = runtime.syntheticFunctionalType(methodInfo.parameters().size(), true);
-
-            // anonymousType.builder().addInterfaceImplemented(interfaceImplemented);
+            List<ParameterizedType> concreteFtParams = new ArrayList<>();
+            for (ParameterInfo pi : methodInfo.parameters()) {
+                concreteFtParams.add(pi.parameterizedType());
+            }
+            concreteFtParams.add(concreteReturnType);
+            ParameterizedType concreteFunctionalType = runtime.newParameterizedType(abstractFunctionalType, concreteFtParams);
+            anonymousType.builder().addInterfaceImplemented(concreteFunctionalType);
         } else throw new UnsupportedOperationException();
 
 

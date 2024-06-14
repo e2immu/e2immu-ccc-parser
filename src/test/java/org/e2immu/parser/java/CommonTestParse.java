@@ -5,6 +5,7 @@ import org.e2immu.cstapi.info.FieldInfo;
 import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.runtime.Runtime;
+import org.e2immu.cstapi.type.TypeParameter;
 import org.e2immu.cstimpl.runtime.RuntimeImpl;
 import org.e2immu.parserapi.Context;
 import org.e2immu.parserapi.PackagePrefix;
@@ -97,6 +98,19 @@ public class CommonTestParse {
         function = runtime.newTypeInfo(javaUtilFunction, "Function");
 
         clazz.builder().addTypeParameter(runtime.newTypeParameter(0, "C", clazz));
+
+        TypeParameter T = runtime.newTypeParameter(0, "T", function);
+        TypeParameter R = runtime.newTypeParameter(1, "R", function);
+        function.builder().addTypeParameter(T).addTypeParameter(R).setTypeNature(runtime.typeNatureInterface());
+        MethodInfo apply = runtime.newMethod(function, "apply", runtime.methodTypeAbstractMethod());
+        apply.builder().setReturnType(runtime.newParameterizedType(R, 0, null))
+                .addMethodModifier(runtime.methodModifierPublic())
+                .addParameter("t", runtime.newParameterizedType(R, 0, null));
+        apply.builder().computeAccess();
+        apply.builder().commit();
+        function.builder().addMethod(apply).addTypeModifier(runtime.typeModifierPublic())
+                .setSingleAbstractMethod(apply)
+                .computeAccess();
 
         MethodInfo pow = runtime.newMethod(math, "pow", runtime.methodTypeStaticMethod());
         pow.builder().addParameter("base", runtime.doubleParameterizedType());

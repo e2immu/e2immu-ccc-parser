@@ -31,8 +31,10 @@ public class TestParseLambda extends CommonTestParse {
         MethodInfo mapper = typeInfo.findUniqueMethod("mapper", 0);
         if (mapper.methodBody().statements().get(0) instanceof ReturnStatement rs
             && rs.expression() instanceof Lambda lambda) {
-            assertEquals("I::map", lambda.toString());
-
+            assertEquals("t->t+this.s", lambda.toString());
+            assertEquals("a.b.C.$1.apply(R)", lambda.methodInfo().fullyQualifiedName());
+            assertEquals(2, lambda.concreteFunctionalType().parameters().size());
+            assertEquals("Function<Integer,String>", lambda.concreteFunctionalType().toString());
         } else fail();
     }
 }
