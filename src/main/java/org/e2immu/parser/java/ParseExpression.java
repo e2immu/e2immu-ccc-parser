@@ -93,37 +93,10 @@ public class ParseExpression extends CommonParse {
             return runtime.newVariableExpressionBuilder().setVariable(v).setSource(source).addComments(comments).build();
         }
         if (node instanceof CastExpression castExpression) {
-            return parseCast(context, index, castExpression);
+            return parseCast(context, index, comments, source, castExpression);
         }
         if (node instanceof AssignmentExpression assignmentExpression) {
-            Expression target = parse(context, index, context.emptyForwardType(), assignmentExpression.get(0));
-            ForwardType fwd = context.newForwardType(target.parameterizedType());
-            Expression value = parse(context, index, fwd, assignmentExpression.get(2));
-            MethodInfo assignmentOperator;
-            MethodInfo binaryOperator;
-            Node.NodeType tt = assignmentExpression.get(1).getType();
-            if (ASSIGN.equals(tt)) {
-                binaryOperator = null;
-                assignmentOperator = null;
-            } else if (Token.TokenType.PLUSASSIGN.equals(tt)) {
-                binaryOperator = runtime.plusOperatorInt();
-                assignmentOperator = runtime.assignPlusOperatorInt();
-            } else if (MINUSASSIGN.equals(tt)) {
-                binaryOperator = runtime.minusOperatorInt();
-                assignmentOperator = runtime.assignMinusOperatorInt();
-            } else if (STARASSIGN.equals(tt)) {
-                binaryOperator = runtime.multiplyOperatorInt();
-                assignmentOperator = runtime.assignMultiplyOperatorInt();
-            } else if (SLASHASSIGN.equals(tt)) {
-                binaryOperator = runtime.divideOperatorInt();
-                assignmentOperator = runtime.assignDivideOperatorInt();
-            } else throw new UnsupportedOperationException("NYI");
-            return runtime.newAssignmentBuilder().setValue(value).setTarget(target)
-                    .setBinaryOperator(binaryOperator)
-                    .setAssignmentOperator(assignmentOperator)
-                    .setAssignmentOperatorIsPlus(false)// not relevant for +=, =
-                    .setPrefixPrimitiveOperator(null)
-                    .addComments(comments).setSource(source).build();
+            return parseAssignment(context, index, assignmentExpression, comments, source);
         }
         if (node instanceof ArrayAccess arrayAccess) {
             assert arrayAccess.size() == 4 : "Not implemented";
@@ -153,6 +126,41 @@ public class ParseExpression extends CommonParse {
             return plusPlusMinMin(context, index, comments, source, 1, 0, node);
         }
         throw new UnsupportedOperationException("node " + node.getClass());
+    }
+
+    private Assignment parseAssignment(Context context,
+                                       String index,
+                                       AssignmentExpression assignmentExpression,
+                                       List<Comment> comments,
+                                       Source source) {
+        Expression target = parse(context, index, context.emptyForwardType(), assignmentExpression.get(0));
+        ForwardType fwd = context.newForwardType(target.parameterizedType());
+        Expression value = parse(context, index, fwd, assignmentExpression.get(2));
+        MethodInfo assignmentOperator;
+        MethodInfo binaryOperator;
+        Node.NodeType tt = assignmentExpression.get(1).getType();
+        if (ASSIGN.equals(tt)) {
+            binaryOperator = null;
+            assignmentOperator = null;
+        } else if (Token.TokenType.PLUSASSIGN.equals(tt)) {
+            binaryOperator = runtime.plusOperatorInt();
+            assignmentOperator = runtime.assignPlusOperatorInt();
+        } else if (MINUSASSIGN.equals(tt)) {
+            binaryOperator = runtime.minusOperatorInt();
+            assignmentOperator = runtime.assignMinusOperatorInt();
+        } else if (STARASSIGN.equals(tt)) {
+            binaryOperator = runtime.multiplyOperatorInt();
+            assignmentOperator = runtime.assignMultiplyOperatorInt();
+        } else if (SLASHASSIGN.equals(tt)) {
+            binaryOperator = runtime.divideOperatorInt();
+            assignmentOperator = runtime.assignDivideOperatorInt();
+        } else throw new UnsupportedOperationException("NYI");
+        return runtime.newAssignmentBuilder().setValue(value).setTarget(target)
+                .setBinaryOperator(binaryOperator)
+                .setAssignmentOperator(assignmentOperator)
+                .setAssignmentOperatorIsPlus(false)// not relevant for +=, =
+                .setPrefixPrimitiveOperator(null)
+                .addComments(comments).setSource(source).build();
     }
 
     private Expression plusPlusMinMin(Context context, String index, List<Comment> comments, Source source,
@@ -245,7 +253,7 @@ public class ParseExpression extends CommonParse {
         return runtime.newVariableExpression(fr);
     }
 
-    private Cast parseCast(Context context, String index, CastExpression castExpression) {
+    private Cast parseCast(Context context, String index, List<Comment> comments, Source source, CastExpression castExpression) {
         // 0 = '(', 2 = ')'
         ParameterizedType pt = parseType.parse(context, castExpression.get(1));
         // can technically be anything
