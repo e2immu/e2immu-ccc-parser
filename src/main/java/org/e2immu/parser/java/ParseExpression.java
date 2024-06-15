@@ -19,6 +19,7 @@ import org.parsers.java.ast.MethodReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.parsers.java.Token.TokenType.*;
@@ -62,6 +63,9 @@ public class ParseExpression extends CommonParse {
         if (node instanceof LiteralExpression le) {
             return parseLiteral(le);
         }
+        if (node instanceof ConditionalAndExpression || node instanceof ConditionalOrExpression) {
+            return parseConditionalExpression(context, comments, source, index, (org.parsers.java.ast.Expression) node);
+        }
         if (node instanceof MultiplicativeExpression me) {
             return parseMultiplicative(context, index, me);
         }
@@ -74,8 +78,8 @@ public class ParseExpression extends CommonParse {
         if (node instanceof EqualityExpression eq) {
             return parseEquality(context, index, eq);
         }
-        if (node instanceof UnaryExpression ue) {
-            return parseUnaryExpression(context, index, ue);
+        if (node instanceof UnaryExpression || node instanceof UnaryExpressionNotPlusMinus) {
+            return parseUnaryExpression(context, index, (org.parsers.java.ast.Expression)node);
         }
         if (node instanceof Name name) {
             String nameAsString = name.getAsString();
@@ -144,12 +148,30 @@ public class ParseExpression extends CommonParse {
         throw new UnsupportedOperationException("node " + node.getClass());
     }
 
+    private Expression parseConditionalExpression(Context context, List<Comment> comments, Source source,
+                                                  String index, org.parsers.java.ast.Expression e) {
+
+        List<Expression> components = new ArrayList<>();
+        ForwardType fwd = context.newForwardType(runtime.booleanParameterizedType());
+        for (int i = 0; i < e.size(); i += 2) {
+            Expression parsed = parse(context, index, fwd, e.get(i));
+            components.add(parsed);
+        }
+        if (e instanceof ConditionalAndExpression) {
+            return runtime.and(components);
+        }
+        if (e instanceof ConditionalOrExpression) {
+            return runtime.or(components);
+        }
+        throw new UnsupportedOperationException();
+    }
+
     private Expression parseParentheses(Context context, String index, ForwardType forwardType, Parentheses p) {
         Expression e = parse(context, index, forwardType, p.getNestedExpression());
         return runtime.newEnclosedExpression(e);
     }
 
-    private Expression parseUnaryExpression(Context context, String index, UnaryExpression ue) {
+    private Expression parseUnaryExpression(Context context, String index, org.parsers.java.ast.Expression ue) {
         MethodInfo methodInfo;
         ForwardType forwardType;
         if (ue.get(0) instanceof Operator operator) {

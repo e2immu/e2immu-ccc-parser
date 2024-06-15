@@ -4,7 +4,6 @@ import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstapi.type.NamedType;
 import org.e2immu.cstapi.type.ParameterizedType;
 import org.e2immu.parserapi.Context;
-import org.jetbrains.annotations.Nullable;
 import org.parsers.java.Node;
 import org.parsers.java.Token;
 import org.parsers.java.ast.*;
