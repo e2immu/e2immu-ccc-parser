@@ -125,7 +125,22 @@ public class ParseExpression extends CommonParse {
         if (node instanceof PreIncrementExpression) {
             return plusPlusMinMin(context, index, comments, source, 1, 0, node);
         }
+        if (node instanceof TernaryExpression) {
+            return inlineConditional(context, index, forwardType, comments, source, node);
+        }
         throw new UnsupportedOperationException("node " + node.getClass());
+    }
+
+    private Expression inlineConditional(Context context, String index, ForwardType forwardType, List<Comment> comments, Source source, Node node) {
+        if (!node.get(1).getType().equals(HOOK)) throw new UnsupportedOperationException();
+        if (!node.get(3).getType().equals(COLON)) throw new UnsupportedOperationException();
+
+        Expression condition = parse(context, index, context.newForwardType(runtime.booleanParameterizedType()), node.get(0));
+        Expression ifTrue = parse(context, index, forwardType, node.get(2));
+        Expression ifFalse = parse(context, index, forwardType, node.get(4));
+        return runtime.newInlineConditionalBuilder()
+                .addComments(comments).setSource(source).setCondition(condition).setIfTrue(ifTrue).setIfFalse(ifFalse)
+                .build(runtime);
     }
 
     private Assignment parseAssignment(Context context,

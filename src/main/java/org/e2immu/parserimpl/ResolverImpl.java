@@ -7,6 +7,7 @@ import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstapi.statement.Block;
+import org.e2immu.cstapi.statement.ExplicitConstructorInvocation;
 import org.e2immu.cstapi.statement.Statement;
 import org.e2immu.parser.java.ParseBlock;
 import org.e2immu.parser.java.ParseExpression;
@@ -39,15 +40,17 @@ public class ResolverImpl implements Resolver {
         this.runtime = runtime;
     }
 
-    record Todo(Info.Builder<?> infoBuilder, ForwardType forwardType, Node expression, Context context) {
+    record Todo(Info.Builder<?> infoBuilder, ForwardType forwardType, ExplicitConstructorInvocation eci,
+                Node expression, Context context) {
     }
 
     private final List<Todo> todos = new LinkedList<>();
     private final List<TypeInfo.Builder> types = new LinkedList<>();
 
     @Override
-    public void add(Info.Builder<?> infoBuilder, ForwardType forwardType, Node expression, Context context) {
-        todos.add(new Todo(infoBuilder, forwardType, expression, context));
+    public void add(Info.Builder<?> infoBuilder, ForwardType forwardType, ExplicitConstructorInvocation eci,
+                    Node expression, Context context) {
+        todos.add(new Todo(infoBuilder, forwardType, eci, expression, context));
     }
 
     @Override
@@ -69,17 +72,28 @@ public class ResolverImpl implements Resolver {
                 builder.commit();
             } else if (todo.infoBuilder instanceof MethodInfo.Builder builder) {
                 Element e;
-                if (todo.expression instanceof ExpressionStatement est) {
-                    e = parseStatement.parse(todo.context, START_INDEX, est);
-                } else if (todo.expression instanceof CodeBlock codeBlock) {
-                    e = parseBlock.parse(todo.context, START_INDEX, codeBlock);
+                if (todo.expression instanceof CodeBlock codeBlock) {
+                    e = parseBlock.parse(todo.context, START_INDEX, codeBlock, todo.eci == null ? 0 : 1);
                 } else {
-                    e = parseExpression.parse(todo.context, START_INDEX, todo.forwardType, todo.expression);
+                    String start = todo.eci == null ? "0" : "1";
+                    if (todo.expression instanceof ExpressionStatement est) {
+                        e = parseStatement.parse(todo.context, start, est);
+                    } else {
+                        e = parseExpression.parse(todo.context, start, todo.forwardType, todo.expression);
+                    }
                 }
                 if (e instanceof Block b) {
-                    builder.setMethodBody(b);
+                    Block bWithEci;
+                    if (todo.eci == null) {
+                        bWithEci = b;
+                    } else {
+                        bWithEci = runtime.newBlockBuilder().addStatement(todo.eci).addStatements(b.statements()).build();
+                    }
+                    builder.setMethodBody(bWithEci);
                 } else if (e instanceof Statement s) {
-                    builder.setMethodBody(runtime.newBlockBuilder().addStatement(s).build());
+                    Block.Builder bb = runtime.newBlockBuilder();
+                    if (todo.eci != null) bb.addStatement(todo.eci);
+                    builder.setMethodBody(bb.addStatement(s).build());
                 } else {
                     // in Java, we must have a block
                     throw new UnsupportedOperationException();

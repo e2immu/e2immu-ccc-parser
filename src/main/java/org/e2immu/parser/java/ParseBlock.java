@@ -20,10 +20,14 @@ public class ParseBlock extends CommonParse {
     }
 
     public Block parse(Context context, String index, CodeBlock codeBlock) {
+        return parse(context, index, codeBlock, 0);
+    }
+
+    public Block parse(Context context, String index, CodeBlock codeBlock, int startCount) {
         Source source = source(context.info(), index, codeBlock);
         List<Comment> comments = comments(codeBlock);
         Block.Builder builder = runtime.newBlockBuilder();
-        int count = 0;
+        int count = startCount;
         for (Node child : codeBlock.children()) {
             if (child instanceof Statement s) {
                 String sIndex = (index.isEmpty() ? "" : index + ".") + count;
