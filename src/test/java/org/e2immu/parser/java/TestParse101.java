@@ -65,6 +65,7 @@ public class TestParse101 extends CommonTestParse {
             && eas.expression() instanceof MethodCall mc) {
             if (mc.parameterExpressions().get(0) instanceof StringConstant sc) {
                 assertEquals("hello", sc.constant());
+                assertEquals("System.out.println(\"hello\")", mc.toString());
             } else fail();
         } else fail();
     }

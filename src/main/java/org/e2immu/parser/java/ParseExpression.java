@@ -13,6 +13,7 @@ import org.e2immu.cstapi.variable.Variable;
 import org.e2immu.parserapi.Context;
 import org.e2immu.parserapi.ForwardType;
 import org.parsers.java.Node;
+import org.parsers.java.Token;
 import org.parsers.java.ast.*;
 import org.parsers.java.ast.MethodCall;
 import org.parsers.java.ast.MethodReference;
@@ -79,7 +80,7 @@ public class ParseExpression extends CommonParse {
             return parseEquality(context, index, eq);
         }
         if (node instanceof UnaryExpression || node instanceof UnaryExpressionNotPlusMinus) {
-            return parseUnaryExpression(context, index, (org.parsers.java.ast.Expression)node);
+            return parseUnaryExpression(context, index, (org.parsers.java.ast.Expression) node);
         }
         if (node instanceof Name name) {
             String nameAsString = name.getAsString();
@@ -98,7 +99,30 @@ public class ParseExpression extends CommonParse {
             Expression target = parse(context, index, context.emptyForwardType(), assignmentExpression.get(0));
             ForwardType fwd = context.newForwardType(target.parameterizedType());
             Expression value = parse(context, index, fwd, assignmentExpression.get(2));
+            MethodInfo assignmentOperator;
+            MethodInfo binaryOperator;
+            Node.NodeType tt = assignmentExpression.get(1).getType();
+            if (ASSIGN.equals(tt)) {
+                binaryOperator = null;
+                assignmentOperator = null;
+            } else if (Token.TokenType.PLUSASSIGN.equals(tt)) {
+                binaryOperator = runtime.plusOperatorInt();
+                assignmentOperator = runtime.assignPlusOperatorInt();
+            } else if (MINUSASSIGN.equals(tt)) {
+                binaryOperator = runtime.minusOperatorInt();
+                assignmentOperator = runtime.assignMinusOperatorInt();
+            } else if (STARASSIGN.equals(tt)) {
+                binaryOperator = runtime.multiplyOperatorInt();
+                assignmentOperator = runtime.assignMultiplyOperatorInt();
+            } else if (SLASHASSIGN.equals(tt)) {
+                binaryOperator = runtime.divideOperatorInt();
+                assignmentOperator = runtime.assignDivideOperatorInt();
+            } else throw new UnsupportedOperationException("NYI");
             return runtime.newAssignmentBuilder().setValue(value).setTarget(target)
+                    .setBinaryOperator(binaryOperator)
+                    .setAssignmentOperator(assignmentOperator)
+                    .setAssignmentOperatorIsPlus(false)// not relevant for +=, =
+                    .setPrefixPrimitiveOperator(null)
                     .addComments(comments).setSource(source).build();
         }
         if (node instanceof ArrayAccess arrayAccess) {
@@ -122,30 +146,38 @@ public class ParseExpression extends CommonParse {
         if (node instanceof LambdaExpression le) {
             return parseLambdaExpression.parse(context, comments, source, index, forwardType, le);
         }
-        if (node instanceof PostfixExpression pfe) {
-            ForwardType fwd = context.newForwardType(runtime.intParameterizedType());
-            Expression target = parse(context, index, fwd, pfe.get(0));
-            MethodInfo binaryOperator;
-            MethodInfo assignmentOperator;
-            boolean isPlus;
-            if (pfe.get(1) instanceof Operator operator) {
-                if (INCR.equals(operator.getType())) {
-                    isPlus = true;
-                    assignmentOperator = runtime.assignPlusOperatorInt();
-                    binaryOperator = runtime.plusOperatorInt();
-                } else if (DECR.equals(operator.getType())) {
-                    isPlus = false;
-                    assignmentOperator = runtime.assignMinusOperatorInt();
-                    binaryOperator = runtime.minusOperatorInt();
-                } else throw new UnsupportedOperationException();
-                return runtime.newAssignmentBuilder().setValue(runtime.intOne()).setTarget(target)
-                        .setAssignmentOperator(assignmentOperator).setAssignmentOperatorIsPlus(isPlus)
-                        .setBinaryOperator(binaryOperator)
-                        .setPrefixPrimitiveOperator(false) // postfix
-                        .addComments(comments).setSource(source).build();
-            } else throw new UnsupportedOperationException();
+        if (node instanceof PostfixExpression) {
+            return plusPlusMinMin(context, index, comments, source, 0, 1, node);
+        }
+        if (node instanceof PreIncrementExpression) {
+            return plusPlusMinMin(context, index, comments, source, 1, 0, node);
         }
         throw new UnsupportedOperationException("node " + node.getClass());
+    }
+
+    private Expression plusPlusMinMin(Context context, String index, List<Comment> comments, Source source,
+                                      int expressionIndex, int opIndex, Node node) {
+        ForwardType fwd = context.newForwardType(runtime.intParameterizedType());
+        Expression target = parse(context, index, fwd, node.get(expressionIndex));
+        MethodInfo binaryOperator;
+        MethodInfo assignmentOperator;
+        boolean isPlus;
+        if (node.get(opIndex) instanceof Operator operator) {
+            if (INCR.equals(operator.getType())) {
+                isPlus = true;
+                assignmentOperator = runtime.assignPlusOperatorInt();
+                binaryOperator = runtime.plusOperatorInt();
+            } else if (DECR.equals(operator.getType())) {
+                isPlus = false;
+                assignmentOperator = runtime.assignMinusOperatorInt();
+                binaryOperator = runtime.minusOperatorInt();
+            } else throw new UnsupportedOperationException();
+            return runtime.newAssignmentBuilder().setValue(runtime.intOne()).setTarget(target)
+                    .setAssignmentOperator(assignmentOperator).setAssignmentOperatorIsPlus(isPlus)
+                    .setBinaryOperator(binaryOperator)
+                    .setPrefixPrimitiveOperator(node instanceof PreIncrementExpression)
+                    .addComments(comments).setSource(source).build();
+        } else throw new UnsupportedOperationException();
     }
 
     private Expression parseConditionalExpression(Context context, List<Comment> comments, Source source,
