@@ -1,6 +1,7 @@
 package org.e2immu.parser.java;
 
 import org.e2immu.cstapi.element.Comment;
+import org.e2immu.cstapi.element.Element;
 import org.e2immu.cstapi.element.Source;
 import org.e2immu.cstapi.expression.Expression;
 import org.e2immu.cstapi.info.TypeInfo;
@@ -65,9 +66,13 @@ public class ParseStatement extends CommonParse {
                     .setExpression(e).setSource(source).addComments(comments)
                     .build();
         }
+
+        // type declarator delimiter declarator
         if (statement instanceof NoVarDeclaration nvd) {
             ParameterizedType type = parseType.parse(context, nvd.get(0));
-            if (nvd.get(1) instanceof VariableDeclarator vd) {
+            LocalVariableCreation.Builder builder = runtime.newLocalVariableCreationBuilder();
+            int i = 1;
+            while (i < nvd.size() && nvd.get(i) instanceof VariableDeclarator vd) {
                 Identifier identifier = (Identifier) vd.get(0);
                 Expression expression;
                 if (vd.size() > 2) {
@@ -79,8 +84,11 @@ public class ParseStatement extends CommonParse {
                 String variableName = identifier.getSource();
                 LocalVariable lv = runtime.newLocalVariable(variableName, type, expression);
                 context.variableContext().add(lv);
-                return runtime.newLocalVariableCreation(lv);
+                if (i == 1) builder.setLocalVariable(lv);
+                else builder.addOtherLocalVariable(lv);
+                i += 2;
             }
+            return builder.setSource(source).addComments(comments).build();
         }
         if (statement instanceof EnhancedForStatement enhancedFor) {
             // kw, del, noVarDecl (objectType, vardcl), operator, name (Name), del, code block
@@ -168,6 +176,36 @@ public class ParseStatement extends CommonParse {
                 finallyBlock = runtime.emptyBlock();
             }
             return builder.setFinallyBlock(finallyBlock).build();
+        }
+        if (statement instanceof BasicForStatement) {
+            org.e2immu.cstapi.statement.ForStatement.Builder builder = runtime.newForBuilder();
+            Context newContext = context.newVariableContext("for-loop");
+            if (statement.get(2) instanceof Statement s) {
+                builder.addInitializer(parse(newContext, index, s));
+            } else if (statement.get(2) instanceof org.parsers.java.ast.Expression e) {
+                builder.addInitializer(parseExpression.parse(newContext, index, newContext.emptyForwardType(), e));
+            } else throw new UnsupportedOperationException();
+            Expression condition = parseExpression.parse(newContext, index, context.emptyForwardType(), statement.get(4));
+            builder.setExpression(condition);
+            int i = 6;
+            while (statement.get(i) instanceof StatementExpression se) {
+                Expression updater = parseExpression.parse(newContext, index, newContext.emptyForwardType(),
+                        se.get(0));
+                builder.addUpdater(updater);
+                i += 2;
+                if (statement.get(i - 1) instanceof Delimiter d && Token.TokenType.RPAREN.equals(d.getType())) {
+                    break;
+                }
+            }
+            Block block = parseBlockOrStatement(newContext, index + FIRST_BLOCK, statement.get(i));
+            return builder.setBlock(block).setSource(source).addComments(comments).build();
+        }
+        if (statement instanceof SynchronizedStatement) {
+            Context newContext = context.newVariableContext("synchronized");
+            Expression expression = parseExpression.parse(context, index, context.emptyForwardType(), statement.get(2));
+            Block block = parseBlockOrStatement(newContext, index + FIRST_BLOCK, statement.get(4));
+            return runtime.newSynchronizedBuilder().setExpression(expression).setBlock(block)
+                    .setSource(source).addComments(comments).build();
         }
         throw new UnsupportedOperationException("Node " + statement.getClass());
     }

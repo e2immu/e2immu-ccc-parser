@@ -120,10 +120,10 @@ public class ParseExpression extends CommonParse {
             return parseLambdaExpression.parse(context, comments, source, index, forwardType, le);
         }
         if (node instanceof PostfixExpression) {
-            return plusPlusMinMin(context, index, comments, source, 0, 1, node);
+            return plusPlusMinMin(context, index, comments, source, 0, 1, false, node);
         }
-        if (node instanceof PreIncrementExpression) {
-            return plusPlusMinMin(context, index, comments, source, 1, 0, node);
+        if (node instanceof PreIncrementExpression || node instanceof PreDecrementExpression) {
+            return plusPlusMinMin(context, index, comments, source, 1, 0, true, node);
         }
         if (node instanceof TernaryExpression) {
             return inlineConditional(context, index, forwardType, comments, source, node);
@@ -179,7 +179,7 @@ public class ParseExpression extends CommonParse {
     }
 
     private Expression plusPlusMinMin(Context context, String index, List<Comment> comments, Source source,
-                                      int expressionIndex, int opIndex, Node node) {
+                                      int expressionIndex, int opIndex, boolean pre, Node node) {
         ForwardType fwd = context.newForwardType(runtime.intParameterizedType());
         Expression target = parse(context, index, fwd, node.get(expressionIndex));
         MethodInfo binaryOperator;
@@ -198,7 +198,7 @@ public class ParseExpression extends CommonParse {
             return runtime.newAssignmentBuilder().setValue(runtime.intOne()).setTarget(target)
                     .setAssignmentOperator(assignmentOperator).setAssignmentOperatorIsPlus(isPlus)
                     .setBinaryOperator(binaryOperator)
-                    .setPrefixPrimitiveOperator(node instanceof PreIncrementExpression)
+                    .setPrefixPrimitiveOperator(pre)
                     .addComments(comments).setSource(source).build();
         } else throw new UnsupportedOperationException();
     }

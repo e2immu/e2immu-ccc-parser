@@ -67,14 +67,15 @@ public class ParseMethodCall extends CommonParse {
         // (, lit expr, )  or  del mc del mc, del expr del expr, del
         expressions = new ArrayList<>();
         int p = 0;
-        for (int k = 1; k < ia.size(); k += 2) {
-            ParameterInfo pi = methodInfo.parameters().get(p);
-            ForwardType forwardType = context.newForwardType(pi.parameterizedType());
-            Expression e = parseExpression.parse(context, index, forwardType, ia.get(k));
-            expressions.add(e);
-            p++;
+        if(ia.size()>2) {
+            for (int k = 1; k < ia.size(); k += 2) {
+                ParameterInfo pi = methodInfo.parameters().get(p);
+                ForwardType forwardType = context.newForwardType(pi.parameterizedType());
+                Expression e = parseExpression.parse(context, index, forwardType, ia.get(k));
+                expressions.add(e);
+                p++;
+            }
         }
-
         return builder.setObject(object)
                 .setParameterExpressions(expressions)
                 .setMethodInfo(methodInfo)
