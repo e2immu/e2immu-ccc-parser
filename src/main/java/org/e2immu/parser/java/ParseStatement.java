@@ -184,7 +184,10 @@ public class ParseStatement extends CommonParse {
             // initializers
 
             int i = 2;
-            if (statement.get(i) instanceof Statement s) {
+            if (statement.get(i) instanceof Delimiter d && Token.TokenType.SEMICOLON.equals(d.getType())) {
+                // no initializer
+                i++;
+            } else if (statement.get(i) instanceof Statement s) {
                 builder.addInitializer(parse(newContext, index, s));
                 i += 2;
             } else if (statement.get(i) instanceof StatementExpression) {
@@ -199,12 +202,17 @@ public class ParseStatement extends CommonParse {
 
             // condition
 
-            Expression condition = parseExpression.parse(newContext, index, context.emptyForwardType(), statement.get(i));
-            builder.setExpression(condition);
-
+            if (statement.get(i) instanceof Delimiter d && Token.TokenType.SEMICOLON.equals(d.getType())) {
+                // no condition
+                builder.setExpression(runtime.constantTrue());
+                i++;
+            } else {
+                Expression condition = parseExpression.parse(newContext, index, context.emptyForwardType(), statement.get(i));
+                builder.setExpression(condition);
+                i += 2;
+            }
             // updaters
 
-            i += 2;
             if ((statement.get(i) instanceof Delimiter d && Token.TokenType.RPAREN.equals(d.getType()))) {
                 i++; // no updaters
             } else {
@@ -227,6 +235,12 @@ public class ParseStatement extends CommonParse {
             Block block = parseBlockOrStatement(newContext, index + FIRST_BLOCK, statement.get(4));
             return runtime.newSynchronizedBuilder().setExpression(expression).setBlock(block)
                     .setSource(source).addComments(comments).build();
+        }
+        if(statement instanceof BreakStatement) {
+            return runtime.newBreakBuilder().setSource(source).addComments(comments).build();
+        }
+        if(statement instanceof ContinueStatement) {
+            return runtime.newContinueBuilder().setSource(source).addComments(comments).build();
         }
         throw new UnsupportedOperationException("Node " + statement.getClass());
     }
