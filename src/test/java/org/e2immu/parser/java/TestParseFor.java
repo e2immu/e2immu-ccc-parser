@@ -31,7 +31,7 @@ public class TestParseFor extends CommonTestParse {
         if (main.methodBody().statements().get(0) instanceof ForStatement s) {
             assertEquals(1, s.initializers().size());
             assertInstanceOf(LocalVariableCreation.class, s.initializers().get(0));
-            assertEquals("int i=0",  s.initializers().get(0).toString());
+            assertEquals("int i=0", s.initializers().get(0).toString());
 
             assertEquals("i<args.length", s.expression().toString());
 
@@ -51,7 +51,6 @@ public class TestParseFor extends CommonTestParse {
             }
             """;
 
-
     @Test
     public void test2() {
         TypeInfo typeInfo = parse(INPUT2);
@@ -59,12 +58,39 @@ public class TestParseFor extends CommonTestParse {
         if (main.methodBody().statements().get(0) instanceof ForStatement s) {
             assertEquals(1, s.initializers().size());
             assertInstanceOf(LocalVariableCreation.class, s.initializers().get(0));
-            assertEquals("int i=0,j=10",  s.initializers().get(0).toString());
+            assertEquals("int i=0,j=10", s.initializers().get(0).toString());
 
             assertEquals("j>0&&i<args.length", s.expression().toString());
 
             assertEquals("i++", s.updaters().get(0).toString());
             assertEquals("--j", s.updaters().get(1).toString());
+        } else fail();
+    }
+
+    @Language("java")
+    private static final String INPUT3 = """
+            package a.b;
+            class C {
+              public static void main(String[] args) {
+                int i, j;
+                for(i=0, j=10; i<args.length && j>0; ) {
+                  System.out.println(args[i]);
+                  i++;
+                  j -= 2;
+                }
+              }
+            }
+            """;
+
+    @Test
+    public void test3() {
+        TypeInfo typeInfo = parse(INPUT3);
+        MethodInfo main = typeInfo.findUniqueMethod("main", 1);
+        assertEquals(2, main.methodBody().statements().size());
+        if (main.methodBody().statements().get(1) instanceof ForStatement s) {
+            assertEquals(2, s.initializers().size());
+            assertEquals("j>0&&i<args.length", s.expression().toString());
+            assertTrue(s.updaters().isEmpty());
         } else fail();
     }
 }

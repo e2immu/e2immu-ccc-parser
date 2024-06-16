@@ -69,14 +69,18 @@ public class ParseMethodDeclaration extends CommonParse {
             i++;
         } else throw new UnsupportedOperationException("Node " + md.get(i).getClass());
         while (i < md.size() && md.get(i) instanceof Delimiter) i++;
-        if (i < md.size() && md.get(i) instanceof CodeBlock codeBlock) {
+        if (i < md.size()) {
             ForwardTypeImpl forwardType = new ForwardTypeImpl(returnType);
             Context newContext = context.newVariableContextForMethodBlock(methodInfo, forwardType);
-            /*
-             delay the parsing of the code-block for a second phase, when all methods are known so that they can
-             be resolved
-             */
-            context.resolver().add(builder, context.emptyForwardType(), null, codeBlock, newContext);
+            if (md.get(i) instanceof CodeBlock codeBlock) {
+                /*
+                 delay the parsing of the code-block for a second phase, when all methods are known so that they can
+                 be resolved
+                 */
+                context.resolver().add(builder, context.emptyForwardType(), null, codeBlock, newContext);
+            } else if(md.get(i) instanceof StatementExpression se) {
+                context.resolver().add(builder, context.emptyForwardType(), null, se, newContext);
+            } else throw new UnsupportedOperationException();
         } else {
             builder.setMethodBody(runtime.emptyBlock());
         }

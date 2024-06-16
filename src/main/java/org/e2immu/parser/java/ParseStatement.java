@@ -180,21 +180,42 @@ public class ParseStatement extends CommonParse {
         if (statement instanceof BasicForStatement) {
             org.e2immu.cstapi.statement.ForStatement.Builder builder = runtime.newForBuilder();
             Context newContext = context.newVariableContext("for-loop");
-            if (statement.get(2) instanceof Statement s) {
+
+            // initializers
+
+            int i = 2;
+            if (statement.get(i) instanceof Statement s) {
                 builder.addInitializer(parse(newContext, index, s));
-            } else if (statement.get(2) instanceof org.parsers.java.ast.Expression e) {
-                builder.addInitializer(parseExpression.parse(newContext, index, newContext.emptyForwardType(), e));
-            } else throw new UnsupportedOperationException();
-            Expression condition = parseExpression.parse(newContext, index, context.emptyForwardType(), statement.get(4));
-            builder.setExpression(condition);
-            int i = 6;
-            while (statement.get(i) instanceof StatementExpression se) {
-                Expression updater = parseExpression.parse(newContext, index, newContext.emptyForwardType(),
-                        se.get(0));
-                builder.addUpdater(updater);
                 i += 2;
-                if (statement.get(i - 1) instanceof Delimiter d && Token.TokenType.RPAREN.equals(d.getType())) {
-                    break;
+            } else if (statement.get(i) instanceof StatementExpression) {
+                // there could be more than one
+                do {
+                    if (statement.get(i) instanceof StatementExpression se) {
+                        builder.addInitializer(parseExpression.parse(newContext, index, newContext.emptyForwardType(), se.get(0)));
+                    } else throw new UnsupportedOperationException();
+                    i += 2;
+                } while (Token.TokenType.COMMA.equals(statement.get(i - 1).getType()));
+            } else throw new UnsupportedOperationException();
+
+            // condition
+
+            Expression condition = parseExpression.parse(newContext, index, context.emptyForwardType(), statement.get(i));
+            builder.setExpression(condition);
+
+            // updaters
+
+            i += 2;
+            if ((statement.get(i) instanceof Delimiter d && Token.TokenType.RPAREN.equals(d.getType()))) {
+                i++; // no updaters
+            } else {
+                while (statement.get(i) instanceof StatementExpression se) {
+                    Expression updater = parseExpression.parse(newContext, index, newContext.emptyForwardType(),
+                            se.get(0));
+                    builder.addUpdater(updater);
+                    i += 2;
+                    if (statement.get(i - 1) instanceof Delimiter d && Token.TokenType.RPAREN.equals(d.getType())) {
+                        break;
+                    }
                 }
             }
             Block block = parseBlockOrStatement(newContext, index + FIRST_BLOCK, statement.get(i));
