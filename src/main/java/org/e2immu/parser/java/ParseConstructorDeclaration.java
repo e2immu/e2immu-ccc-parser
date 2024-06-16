@@ -1,18 +1,13 @@
 package org.e2immu.parser.java;
 
-import org.e2immu.cstapi.element.Comment;
-import org.e2immu.cstapi.element.Source;
-import org.e2immu.cstapi.expression.Expression;
 import org.e2immu.cstapi.info.Access;
 import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.info.MethodModifier;
 import org.e2immu.cstapi.info.ParameterInfo;
 import org.e2immu.cstapi.runtime.Runtime;
-import org.e2immu.cstapi.statement.ExplicitConstructorInvocation;
 import org.e2immu.cstapi.type.ParameterizedType;
 import org.e2immu.parserapi.Context;
 import org.parsers.java.Node;
-import org.parsers.java.Token;
 import org.parsers.java.ast.*;
 
 import java.util.ArrayList;
@@ -68,31 +63,22 @@ public class ParseConstructorDeclaration extends CommonParse {
         ExplicitConstructorInvocation explicitConstructorInvocation;
         while (i < cd.size() && cd.get(i) instanceof Delimiter) i++;
         if (cd.get(i) instanceof org.parsers.java.ast.ExplicitConstructorInvocation eci) {
-            List<Comment> comments = comments(cd.get(i));
-            Source source = source(methodInfo, "0", cd.get(i));
-            boolean isSuper = Token.TokenType.SUPER.equals(eci.get(0).getType());
-            List<Expression> parameterExpressions = parseArguments(context, eci.get(1));
-            MethodInfo eciMethod = context.enclosingType().findConstructor(parameterExpressions.size());
-            explicitConstructorInvocation = runtime.newExplicitConstructorInvocationBuilder()
-                    .addComments(comments)
-                    .setSource(source)
-                    .setIsSuper(isSuper)
-                    .setMethodInfo(eciMethod)
-                    .setParameterExpressions(parameterExpressions)
-                    .build();
-            i += 2; // skip the ';' delimiter
+                explicitConstructorInvocation = eci;
+            i ++;
         } else {
             explicitConstructorInvocation = null;
         }
+        Node toResolve;
         if (cd.get(i) instanceof ExpressionStatement est) {
-            Context newContext = context.newVariableContextForMethodBlock(methodInfo, null);
-            context.resolver().add(builder, context.emptyForwardType(), explicitConstructorInvocation, est, newContext);
+            toResolve = est;
         } else if (cd.get(i) instanceof CodeBlock codeBlock) {
-            Context newContext = context.newVariableContextForMethodBlock(methodInfo, null);
-            context.resolver().add(builder, context.emptyForwardType(), explicitConstructorInvocation, codeBlock, newContext);
+            toResolve = codeBlock;
         } else {
-            builder.setMethodBody(runtime.emptyBlock());
+            toResolve = null;
         }
+        Context newContext = context.newVariableContextForMethodBlock(methodInfo, null);
+        context.resolver().add(builder, context.emptyForwardType(), explicitConstructorInvocation, toResolve,
+                newContext);
         builder.commitParameters();
         methodModifiers.forEach(builder::addMethodModifier);
         Access access = access(methodModifiers);
@@ -101,17 +87,6 @@ public class ParseConstructorDeclaration extends CommonParse {
         builder.addComments(comments(cd));
         builder.setSource(source(methodInfo, null, cd));
         return methodInfo;
-    }
-
-    // arguments of ECI
-    private List<Expression> parseArguments(Context context, Node node) {
-        assert node instanceof InvocationArguments;
-        List<Expression> expressions = new ArrayList<>();
-        for (int k = 1; k < node.size(); k += 2) {
-            Expression e = parseExpression.parse(context, "0", context.emptyForwardType(), node.get(k));
-            expressions.add(e);
-        }
-        return List.copyOf(expressions);
     }
 
     private void parseFormalParameter(Context context, MethodInfo.Builder builder, FormalParameter fp) {

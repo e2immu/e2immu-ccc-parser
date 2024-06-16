@@ -1,13 +1,15 @@
 package org.e2immu.parserimpl;
 
+import org.e2immu.cstapi.element.Comment;
 import org.e2immu.cstapi.element.Element;
+import org.e2immu.cstapi.element.Source;
+import org.e2immu.cstapi.expression.Expression;
 import org.e2immu.cstapi.info.FieldInfo;
 import org.e2immu.cstapi.info.Info;
 import org.e2immu.cstapi.info.MethodInfo;
 import org.e2immu.cstapi.info.TypeInfo;
 import org.e2immu.cstapi.runtime.Runtime;
 import org.e2immu.cstapi.statement.Block;
-import org.e2immu.cstapi.statement.ExplicitConstructorInvocation;
 import org.e2immu.cstapi.statement.Statement;
 import org.e2immu.parser.java.ParseBlock;
 import org.e2immu.parser.java.ParseExpression;
@@ -16,12 +18,12 @@ import org.e2immu.parserapi.Context;
 import org.e2immu.parserapi.ForwardType;
 import org.e2immu.parserapi.Resolver;
 import org.parsers.java.Node;
-import org.parsers.java.ast.CodeBlock;
-import org.parsers.java.ast.Expression;
-import org.parsers.java.ast.ExpressionStatement;
+import org.parsers.java.Token;
+import org.parsers.java.ast.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -71,29 +73,32 @@ public class ResolverImpl implements Resolver {
                 builder.setInitializer(e);
                 builder.commit();
             } else if (todo.infoBuilder instanceof MethodInfo.Builder builder) {
+                org.e2immu.cstapi.statement.ExplicitConstructorInvocation eci;
+                if (todo.eci == null) {
+                    eci = null;
+                } else {
+                    eci = parseEci(todo);
+                }
                 Element e;
                 if (todo.expression instanceof CodeBlock codeBlock) {
-                    e = parseBlock.parse(todo.context, START_INDEX, codeBlock, todo.eci == null ? 0 : 1);
+                    e = parseBlock.parse(todo.context, START_INDEX, codeBlock, eci == null ? 0 : 1);
                 } else {
-                    String start = todo.eci == null ? "0" : "1";
-                    if (todo.expression instanceof ExpressionStatement est) {
-                        e = parseStatement.parse(todo.context, start, est);
-                    } else {
-                        e = parseExpression.parse(todo.context, start, todo.forwardType, todo.expression);
-                    }
+                    e = parseStatements(todo, eci != null);
                 }
                 if (e instanceof Block b) {
                     Block bWithEci;
-                    if (todo.eci == null) {
+                    if (eci == null) {
                         bWithEci = b;
                     } else {
-                        bWithEci = runtime.newBlockBuilder().addStatement(todo.eci).addStatements(b.statements()).build();
+                        bWithEci = runtime.newBlockBuilder().addStatement(eci).addStatements(b.statements()).build();
                     }
                     builder.setMethodBody(bWithEci);
                 } else if (e instanceof Statement s) {
                     Block.Builder bb = runtime.newBlockBuilder();
-                    if (todo.eci != null) bb.addStatement(todo.eci);
+                    if (eci != null) bb.addStatement(eci);
                     builder.setMethodBody(bb.addStatement(s).build());
+                } else if (e == null && eci != null) {
+                    builder.setMethodBody(runtime.newBlockBuilder().addStatement(eci).build());
                 } else {
                     // in Java, we must have a block
                     throw new UnsupportedOperationException();
@@ -105,4 +110,68 @@ public class ResolverImpl implements Resolver {
             builder.commit();
         }
     }
+
+    /*
+    we have and the potential "ECI" to deal with, and the fact that sometimes, multiple
+    ExpressionStatements can replace a CodeBlock (no idea why, but we need to deal with it)
+    See TestExplicitConstructorInvocation.
+     */
+    private Element parseStatements(Todo todo, boolean haveEci) {
+        int start = haveEci ? 1: 0;
+        if (todo.expression instanceof ExpressionStatement est) {
+            Statement firstStatement = parseStatement.parse(todo.context, "" + start, est);
+
+            List<ExpressionStatement> siblings = new ArrayList<>();
+            while (est.nextSibling() instanceof ExpressionStatement next) {
+                siblings.add(next);
+                est = next;
+            }
+            if (siblings.isEmpty()) {
+                return firstStatement;
+            }
+            Block.Builder b = runtime.newBlockBuilder();
+            b.addStatement(firstStatement);
+            for (ExpressionStatement es : siblings) {
+                ++start;
+                Statement s2 = parseStatement.parse(todo.context, "" + start, es);
+                b.addStatement(s2);
+            }
+            return b.build();
+
+        }
+        if (todo.expression != null) {
+            return parseExpression.parse(todo.context, "" + start, todo.forwardType, todo.expression);
+        }
+        return null;
+    }
+
+    private org.e2immu.cstapi.statement.ExplicitConstructorInvocation parseEci(Todo todo) {
+        org.e2immu.cstapi.statement.ExplicitConstructorInvocation eci;
+        ConstructorDeclaration cd = (ConstructorDeclaration) todo.eci.getParent();
+        List<Comment> comments = parseStatement.comments(cd);
+        Source source = parseStatement.source(todo.context.enclosingMethod(), "0", cd);
+        boolean isSuper = Token.TokenType.SUPER.equals(todo.eci.get(0).getType());
+        List<Expression> parameterExpressions = parseArguments(todo.context, todo.eci.get(1));
+        MethodInfo eciMethod = todo.context.enclosingType().findConstructor(parameterExpressions.size());
+        eci = runtime.newExplicitConstructorInvocationBuilder()
+                .addComments(comments)
+                .setSource(source)
+                .setIsSuper(isSuper)
+                .setMethodInfo(eciMethod)
+                .setParameterExpressions(parameterExpressions)
+                .build();
+        return eci;
+    }
+
+    // arguments of ECI
+    private List<Expression> parseArguments(Context context, Node node) {
+        assert node instanceof InvocationArguments;
+        List<Expression> expressions = new ArrayList<>();
+        for (int k = 1; k < node.size(); k += 2) {
+            Expression e = parseExpression.parse(context, "0", context.emptyForwardType(), node.get(k));
+            expressions.add(e);
+        }
+        return List.copyOf(expressions);
+    }
+
 }

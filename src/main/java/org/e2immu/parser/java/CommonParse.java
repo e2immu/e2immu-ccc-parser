@@ -18,7 +18,7 @@ public abstract class CommonParse {
         this.runtime = runtime;
     }
 
-    protected List<Comment> comments(Node node) {
+    public List<Comment> comments(Node node) {
         return node.getAllTokens(true).stream().map(t -> {
             if (t instanceof SingleLineComment slc) {
                 return runtime.newSingleLineComment(slc.getSource());
@@ -34,7 +34,7 @@ public abstract class CommonParse {
     this implementation gives an "imperfect" parent... See e.g. parseBlock: we cannot pass on the parent during
     parsing, because we still have the builder at that point in time.
      */
-    protected Source source(Info info, String index, Node node) {
+    public Source source(Info info, String index, Node node) {
         return runtime.newParserSource(info, index, node.getBeginLine(), node.getBeginColumn(), node.getEndLine(),
                 node.getEndColumn());
     }

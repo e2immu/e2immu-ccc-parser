@@ -2,8 +2,8 @@ package org.e2immu.parserapi;
 
 import org.e2immu.cstapi.info.Info;
 import org.e2immu.cstapi.info.TypeInfo;
-import org.e2immu.cstapi.statement.ExplicitConstructorInvocation;
 import org.parsers.java.Node;
+import org.parsers.java.ast.ExplicitConstructorInvocation;
 
 public interface Resolver {
     /*
